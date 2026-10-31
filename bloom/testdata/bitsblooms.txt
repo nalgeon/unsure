@@ -1,0 +1,60 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/nalgeon/unsure/bloom
+cpu: Apple M1
+BenchmarkAdd/n=10000/impl=bitsblooms-8         	35645550	        33.64 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=10000/impl=bitsblooms-8         	35914926	        33.69 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=10000/impl=bitsblooms-8         	35978862	        34.68 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=10000/impl=bitsblooms-8         	35942178	        34.11 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=10000/impl=bitsblooms-8         	35272418	        34.48 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=10000/impl=bitsblooms-8         	35943434	        34.71 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=1000000/impl=bitsblooms-8       	32583902	        36.41 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=1000000/impl=bitsblooms-8       	33492967	        39.60 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=1000000/impl=bitsblooms-8       	33213969	        38.38 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=1000000/impl=bitsblooms-8       	33642697	        37.33 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=1000000/impl=bitsblooms-8       	30849058	        38.49 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=1000000/impl=bitsblooms-8       	33687164	        35.97 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=50000000/impl=bitsblooms-8      	 6305586	       182.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=50000000/impl=bitsblooms-8      	 6821919	       177.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=50000000/impl=bitsblooms-8      	 7061677	       173.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=50000000/impl=bitsblooms-8      	 5933841	       179.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=50000000/impl=bitsblooms-8      	 6897416	       178.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAdd/n=50000000/impl=bitsblooms-8      	 7010428	       174.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=10000/impl=bitsblooms-8      	38096446	        31.68 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=10000/impl=bitsblooms-8      	38801413	        36.66 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=10000/impl=bitsblooms-8      	36925633	        33.86 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=10000/impl=bitsblooms-8      	36312913	        32.70 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=10000/impl=bitsblooms-8      	37517536	        31.42 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=10000/impl=bitsblooms-8      	37955964	        32.06 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=1000000/impl=bitsblooms-8    	36226186	        31.30 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=1000000/impl=bitsblooms-8    	38371348	        31.22 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=1000000/impl=bitsblooms-8    	38202924	        31.15 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=1000000/impl=bitsblooms-8    	38263982	        31.66 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=1000000/impl=bitsblooms-8    	38285348	        31.41 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=1000000/impl=bitsblooms-8    	35992710	        32.13 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=50000000/impl=bitsblooms-8   	 9232084	       129.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=50000000/impl=bitsblooms-8   	 9187478	       129.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=50000000/impl=bitsblooms-8   	 9045811	       130.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=50000000/impl=bitsblooms-8   	 7669005	       136.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=50000000/impl=bitsblooms-8   	 9358210	       132.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasHit/n=50000000/impl=bitsblooms-8   	 7393500	       142.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=10000/impl=bitsblooms-8     	28500121	        43.15 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=10000/impl=bitsblooms-8     	28811496	        41.30 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=10000/impl=bitsblooms-8     	29232583	        41.19 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=10000/impl=bitsblooms-8     	29226946	        41.09 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=10000/impl=bitsblooms-8     	29173359	        41.50 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=10000/impl=bitsblooms-8     	28655774	        41.55 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=1000000/impl=bitsblooms-8   	24981436	        49.09 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=1000000/impl=bitsblooms-8   	25021066	        48.83 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=1000000/impl=bitsblooms-8   	25131897	        47.65 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=1000000/impl=bitsblooms-8   	25130055	        47.85 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=1000000/impl=bitsblooms-8   	24867480	        47.90 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=1000000/impl=bitsblooms-8   	25113051	        47.70 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=50000000/impl=bitsblooms-8  	 9769759	       115.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=50000000/impl=bitsblooms-8  	10402526	       114.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=50000000/impl=bitsblooms-8  	10260099	       117.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=50000000/impl=bitsblooms-8  	10782832	       112.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=50000000/impl=bitsblooms-8  	10660948	       114.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkHasMiss/n=50000000/impl=bitsblooms-8  	 8866180	       116.7 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/nalgeon/unsure/bloom	171.468s
