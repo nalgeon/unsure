@@ -1,6 +1,6 @@
 REF := bloom/testdata/bitsblooms.txt
 
-.PHONY: bloom-test bloom-bench bloom-bench-ref bloom-bench-full
+.PHONY: bloom-test bloom-bench bloom-bench-ref bloom-bench-full bloom-size
 
 # Run the tests.
 bloom-test:
@@ -17,3 +17,7 @@ bloom-bench-ref:
 # Full statistically sound comparison of both implementations (slow, several minutes).
 bloom-bench-full:
 	go test -run x -bench . -count 10 ./bloom | benchstat -col /impl -
+
+# Memory use (bits/item) of our Set vs the reference.
+bloom-size:
+	@go test -v -run '^TestSize$$' ./bloom | grep 'bits/item' | sed 's/^.*: n=/n=/'

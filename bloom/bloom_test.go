@@ -198,7 +198,7 @@ func TestFalsePositiveRateSmall(t *testing.T) {
 
 // maxSizeRatio is how much memory Set may use relative to the reference
 // implementation for the same n and fpProb.
-const maxSizeRatio = 1.25
+const maxSizeRatio = 1.15
 
 // TestSize checks that Set uses no more memory than the reference implementation,
 // and no less than the information-theoretic minimum of n*log2(1/p) bits
@@ -210,7 +210,7 @@ func TestSize(t *testing.T) {
 				got := NewSet(n, p).Size()
 				want := newRefSet(n, p).Size()
 				minBytes := int(float64(n) * math.Log2(1/p) / 8)
-				t.Logf("unsure=%d bytes (%.2f bits/item), bitsblooms=%d bytes (%.2f bits/item)",
+				t.Logf("n=%d p=%g: unsure=%d bytes (%.2f bits/item), bitsblooms=%d bytes (%.2f bits/item)", n, p,
 					got, float64(got*8)/float64(n), want, float64(want*8)/float64(n))
 				if got < minBytes {
 					t.Errorf("size %d bytes is below the theoretical minimum %d; Size is likely wrong", got, minBytes)
