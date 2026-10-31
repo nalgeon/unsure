@@ -1,4 +1,4 @@
-REF := bloom/testdata/bitsblooms.txt
+REF := bloom/testdata/reference.txt
 
 .PHONY: bloom-test bloom-bench bloom-bench-ref bloom-bench-full bloom-size
 
@@ -12,7 +12,7 @@ bloom-bench:
 
 # Record reference (bits-and-blooms) results. Rerun on a new machine or Go version.
 bloom-bench-ref:
-	go test -run x -bench '//impl=bitsblooms' -count 6 ./bloom > $(REF)
+	go test -run x -bench '//impl=(bitsblooms|gloom)' -count 6 ./bloom > $(REF)
 
 # Full statistically sound comparison of both implementations (slow, several minutes).
 bloom-bench-full:

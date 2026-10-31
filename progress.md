@@ -11,6 +11,18 @@ Standard Bloom filter, murmur3 128-bit, k scattered bits per item.
 | ------------- | ------------- | ------------- | ---------------- |
 | 34 / 38 / 178 | 32 / 31 / 131 | 41 / 48 / 115 | 4.8 / 9.6 / 14.4 |
 
+## 0b. Second baseline: jcalabro/gloom v0.1.0
+
+Added later, for comparison. Blocked like ours: 512-bit blocks, xxh3-128 (unseeded),
+k positions = hash mod k distinct primes (hardware divide), early-exit Test.
+
+| Add          | HasHit       | HasMiss      | Size                 |
+| ------------ | ------------ | ------------ | -------------------- |
+| 17 / 19 / 68 | 16 / 18 / 61 | 27 / 33 / 61 | 5.39 / 10.79 / 16.18 |
+
+Overshoots on FP (0.0078 / 0.0072 / 0.00087 at 100k), so it spends memory it doesn't need.
+At iteration 3, ours is ~2× faster (geomean 14.9 vs 30.2 ns) and 9–11% smaller.
+
 ## 1. Split block Bloom filter
 
 - One 64-byte block (cache line) per item, `[]([8]uint64)`; sets 1 bit in each of 8 words (k=8).
@@ -57,3 +69,9 @@ Limit: 512-bit block hurts very low p (1e-6 → k=16, 38.5 bits/item vs 28.8 sta
 Speed: from `make bloom-bench-full` (±0–6%); ~3.8× faster than baseline (geomean 14.7 vs 56.4 ns).
 Memory unchanged; FP rate lower for free where rounding was large: n=100k → 0.0834 / 0.0078 / 0.00088
 (was ~0.1 / 0.01 / 0.001). Only 64 bytes (the struct) of allocation now unused.
+
+## 4. Pure-Go wyhash instead of maphash (reverted)
+
+- Hypothesis: maphash is mostly call overhead for short keys. Wrong: on arm64 it's a tight
+  AES asm routine. 16-byte keys: maphash 3.6 ns, wyhash (pure Go, not inlinable) 4.3 ns.
+- Has got ~1 ns slower (8.4 → 9.6 at n=10k). Reverted to maphash.

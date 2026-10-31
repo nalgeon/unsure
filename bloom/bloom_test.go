@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	ref "github.com/bits-and-blooms/bloom/v3"
+	"github.com/jcalabro/gloom"
 )
 
 // filter is the common interface for our Set and the reference implementation,
@@ -29,6 +30,17 @@ func (s *refSet) Add(item []byte)      { s.f.Add(item) }
 func (s *refSet) Has(item []byte) bool { return s.f.Test(item) }
 func (s *refSet) Size() int            { return len(s.f.BitSet().Words()) * 8 }
 
+// gloomSet adapts github.com/jcalabro/gloom to the filter interface.
+type gloomSet struct{ f *gloom.Filter }
+
+func newGloomSet(n int, fpProb float64) *gloomSet {
+	return &gloomSet{gloom.New(uint64(n), fpProb)}
+}
+
+func (s *gloomSet) Add(item []byte)      { s.f.Add(item) }
+func (s *gloomSet) Has(item []byte) bool { return s.f.Test(item) }
+func (s *gloomSet) Size() int            { return int(s.f.NumBlocks()) * 64 }
+
 type impl struct {
 	name string
 	new  func(n int, fpProb float64) filter
@@ -37,6 +49,7 @@ type impl struct {
 var impls = []impl{
 	{"unsure", func(n int, p float64) filter { return NewSet(n, p) }},
 	{"bitsblooms", func(n int, p float64) filter { return newRefSet(n, p) }},
+	{"gloom", func(n int, p float64) filter { return newGloomSet(n, p) }},
 }
 
 // makeKeys returns n distinct 16-byte keys. Keys from different seeds don't overlap.
@@ -228,9 +241,11 @@ func TestSize(t *testing.T) {
 			t.Run(fmt.Sprintf("n=%d/p=%g", n, p), func(t *testing.T) {
 				s, got := allocated(func() *Set { return NewSet(n, p) })
 				_, want := allocated(func() *ref.BloomFilter { return ref.NewWithEstimates(uint(n), p) })
+				_, gl := allocated(func() *gloom.Filter { return gloom.New(uint64(n), p) })
 				minBytes := int(float64(n) * math.Log2(1/p) / 8)
-				t.Logf("n=%d p=%g: unsure=%d bytes (%.2f bits/item), bitsblooms=%d bytes (%.2f bits/item)", n, p,
-					got, float64(got*8)/float64(n), want, float64(want*8)/float64(n))
+				bpi := func(bytes int) float64 { return float64(bytes*8) / float64(n) }
+				t.Logf("n=%d p=%g: unsure=%d bytes (%.2f bits/item), bitsblooms=%d bytes (%.2f bits/item), gloom=%d bytes (%.2f bits/item)",
+					n, p, got, bpi(got), want, bpi(want), gl, bpi(gl))
 				if got < minBytes {
 					t.Errorf("allocated %d bytes, below the theoretical minimum %d; measurement is likely wrong", got, minBytes)
 				}
