@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"runtime"
 	"testing"
 
 	ref "github.com/bits-and-blooms/bloom/v3"
@@ -200,23 +201,52 @@ func TestFalsePositiveRateSmall(t *testing.T) {
 // implementation for the same n and fpProb.
 const maxSizeRatio = 1.15
 
-// TestSize checks that Set uses no more memory than the reference implementation,
-// and no less than the information-theoretic minimum of n*log2(1/p) bits
-// (which no approximate membership structure can beat).
+// allocated returns the number of heap bytes allocated by fn.
+// Takes the min of several runs, since unrelated runtime allocations
+// may occasionally land within a single measurement.
+func allocated[T any](fn func() T) (T, int) {
+	var v T
+	bytes := math.MaxInt
+	for range 3 {
+		var before, after runtime.MemStats
+		runtime.ReadMemStats(&before)
+		v = fn()
+		runtime.ReadMemStats(&after)
+		bytes = min(bytes, int(after.TotalAlloc-before.TotalAlloc))
+	}
+	return v, bytes
+}
+
+// TestSize checks the memory actually allocated by NewSet: no more than
+// maxSizeRatio times the reference implementation, and no less than the
+// information-theoretic minimum of n*log2(1/p) bits (which no approximate
+// membership structure can beat). It also checks that Set.Size reports
+// the allocated memory accurately.
 func TestSize(t *testing.T) {
 	for _, n := range []int{1000, 100_000, 10_000_000} {
 		for _, p := range []float64{0.1, 0.01, 0.001} {
 			t.Run(fmt.Sprintf("n=%d/p=%g", n, p), func(t *testing.T) {
-				got := NewSet(n, p).Size()
-				want := newRefSet(n, p).Size()
+				s, got := allocated(func() *Set { return NewSet(n, p) })
+				_, want := allocated(func() *ref.BloomFilter { return ref.NewWithEstimates(uint(n), p) })
 				minBytes := int(float64(n) * math.Log2(1/p) / 8)
 				t.Logf("n=%d p=%g: unsure=%d bytes (%.2f bits/item), bitsblooms=%d bytes (%.2f bits/item)", n, p,
 					got, float64(got*8)/float64(n), want, float64(want*8)/float64(n))
 				if got < minBytes {
-					t.Errorf("size %d bytes is below the theoretical minimum %d; Size is likely wrong", got, minBytes)
+					t.Errorf("allocated %d bytes, below the theoretical minimum %d; measurement is likely wrong", got, minBytes)
 				}
 				if float64(got) > float64(want)*maxSizeRatio {
-					t.Errorf("size %d bytes exceeds %.2fx reference size %d", got, maxSizeRatio, want)
+					t.Errorf("allocated %d bytes, exceeds %.2fx reference %d", got, maxSizeRatio, want)
+				}
+				// Size leaves out the struct and allocator rounding:
+				// up to 1/8 for small objects (size classes),
+				// up to one 8KB page for large ones (>32KB).
+				size := s.Size()
+				slack := 256 + size/8
+				if size > 32<<10 {
+					slack = 256 + 8<<10
+				}
+				if size > got || got > size+slack {
+					t.Errorf("Size() = %d, but NewSet allocated %d bytes", size, got)
 				}
 			})
 		}
