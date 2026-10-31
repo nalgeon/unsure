@@ -43,3 +43,17 @@ Open: TestSize fails at n=1000/p=0.1 (1.28× > 1.25×).
 ~3.7× faster than baseline, ~10% faster than iteration 1 (k=6 vs 8 at p=0.01).
 Memory vs baseline: +1% / +3% / +8%. TestSize passes (worst: n=1000/p=0.1, 1.07×, block rounding).
 Limit: 512-bit block hurts very low p (1e-6 → k=16, 38.5 bits/item vs 28.8 standard).
+
+## 3. Use allocator slack as extra blocks
+
+- Go rounds allocations up (size classes; whole 8KB pages above 32KB). Build blocks with
+  `append([]block(nil), make([]block, n)...)` so cap reports the rounded size, and use all of it.
+- TestSize now measures real allocation (MemStats.TotalAlloc), not self-reported Size().
+
+| Add           | HasHit         | HasMiss        | Size                |
+| ------------- | -------------- | -------------- | ------------------- |
+| 9.1 / 10 / 40 | 8.4 / 9.2 / 37 | 8.4 / 9.2 / 38 | 4.84 / 9.90 / 15.49 |
+
+Speed: from `make bloom-bench-full` (±0–6%); ~3.8× faster than baseline (geomean 14.7 vs 56.4 ns).
+Memory unchanged; FP rate lower for free where rounding was large: n=100k → 0.0834 / 0.0078 / 0.00088
+(was ~0.1 / 0.01 / 0.001). Only 64 bytes (the struct) of allocation now unused.

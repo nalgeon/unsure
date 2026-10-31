@@ -55,8 +55,15 @@ func NewSet(n int, fpProb float64) *Set {
 	if nblocks > math.MaxUint32 {
 		panic("bloom: set is too large")
 	}
+	// The allocator rounds the allocation up to its size class (or whole
+	// pages for large sizes). Appending to a nil slice reports the rounded
+	// capacity, so use it all as extra blocks: lower FP rate for free.
+	blocks := append([]block(nil), make([]block, nblocks)...)
+	// Block index math needs nblocks <= 2^32 (see Add), so cap it.
+	blocks = blocks[:min(uint64(cap(blocks)), math.MaxUint32)]
+	nblocks = uint64(len(blocks))
 	return &Set{
-		blocks:  make([]block, nblocks),
+		blocks:  blocks,
 		nblocks: nblocks,
 		salts:   salts[:k],
 		seed:    maphash.MakeSeed(),

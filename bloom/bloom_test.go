@@ -284,6 +284,10 @@ func BenchmarkAdd(b *testing.B) {
 		for _, im := range impls {
 			b.Run(fmt.Sprintf("n=%d/impl=%s", n, im.name), func(b *testing.B) {
 				s := im.new(n, benchP)
+				// Touch every page of the fresh filter, so the timed loop
+				// doesn't pay for page faults on first write. Add's cost
+				// doesn't depend on how full the filter is.
+				fill(s, 3, n/16)
 				b.ReportAllocs()
 				i := 0
 				for b.Loop() {
