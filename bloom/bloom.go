@@ -55,15 +55,15 @@ type Options struct {
 	Seed uint64
 }
 
-// NewSet creates a set for n items with the target false positive
+// New creates a set for n items with the target false positive
 // probability fpProb, using the default options.
 // Panics if n is negative or fpProb is not in (0, 1).
-func NewSet(n int, fpProb float64) *Set {
-	return NewSetOptions(n, fpProb, Options{})
+func New(n int, fpProb float64) *Set {
+	return NewWith(n, fpProb, Options{})
 }
 
-// NewSetOptions is like [NewSet], but with the given options.
-func NewSetOptions(n int, fpProb float64, opts Options) *Set {
+// NewWith is like [New], but with the given options.
+func NewWith(n int, fpProb float64, opts Options) *Set {
 	if n < 0 {
 		panic("bloom: n must not be negative")
 	}

@@ -35,7 +35,7 @@ type bloomImpl struct {
 }
 
 var bloomImpls = []bloomImpl{
-	{"unsure", func(n int, p float64) bloomFilter { return bloom.NewSet(n, p) }},
+	{"unsure", func(n int, p float64) bloomFilter { return bloom.New(n, p) }},
 	{"bitsblooms", func(n int, p float64) bloomFilter { return refBloom{ref.NewWithEstimates(uint(n), p)} }},
 	{"gloom", func(n int, p float64) bloomFilter { return gloomBloom{gloom.New(uint64(n), p)} }},
 }
@@ -44,13 +44,13 @@ var bloomImpls = []bloomImpl{
 // implementation for the same n and fpProb.
 const maxBloomSizeRatio = 1.15
 
-// TestBloomSize checks that NewSet allocates no more than maxBloomSizeRatio
+// TestBloomSize checks that New allocates no more than maxBloomSizeRatio
 // times the reference implementation, and reports bits/item for all implementations.
 func TestBloomSize(t *testing.T) {
 	for _, n := range []int{1000, 100_000, 10_000_000} {
 		for _, p := range []float64{0.1, 0.01, 0.001} {
 			t.Run(fmt.Sprintf("n=%d/p=%g", n, p), func(t *testing.T) {
-				_, got := allocated(func() *bloom.Set { return bloom.NewSet(n, p) })
+				_, got := allocated(func() *bloom.Set { return bloom.New(n, p) })
 				_, want := allocated(func() *ref.BloomFilter { return ref.NewWithEstimates(uint(n), p) })
 				_, gl := allocated(func() *gloom.Filter { return gloom.New(uint64(n), p) })
 				bpi := func(bytes int) float64 { return float64(bytes*8) / float64(n) }

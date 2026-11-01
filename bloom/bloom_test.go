@@ -24,7 +24,7 @@ func makeKeys(seed uint64, n int) [][]byte {
 }
 
 func TestEmpty(t *testing.T) {
-	s := NewSet(1000, 0.01)
+	s := New(1000, 0.01)
 	for _, k := range makeKeys(1, 1000) {
 		if s.Contains(k) {
 			t.Fatalf("empty set reports %x as present", k)
@@ -35,7 +35,7 @@ func TestEmpty(t *testing.T) {
 func TestNoFalseNegatives(t *testing.T) {
 	for _, n := range []int{1, 10, 1000, 100_000} {
 		t.Run(fmt.Sprintf("n=%d", n), func(t *testing.T) {
-			s := NewSet(n, 0.01)
+			s := New(n, 0.01)
 			keys := makeKeys(1, n)
 			for _, k := range keys {
 				s.Add(k)
@@ -59,7 +59,7 @@ func TestEdgeKeys(t *testing.T) {
 		[]byte("hello, world"),
 		make([]byte, 1<<16),
 	}
-	s := NewSet(len(keys), 0.01)
+	s := New(len(keys), 0.01)
 	for _, k := range keys {
 		s.Add(k)
 	}
@@ -80,7 +80,7 @@ func TestFalsePositiveRate(t *testing.T) {
 
 	for _, p := range []float64{0.1, 0.01, 0.001} {
 		t.Run(fmt.Sprintf("p=%g", p), func(t *testing.T) {
-			s := NewSet(n, p)
+			s := New(n, p)
 			for _, k := range members {
 				s.Add(k)
 			}
@@ -110,7 +110,7 @@ func TestFalsePositiveRateLarge(t *testing.T) {
 	const n = 50_000_000
 	const probes = 1_000_000
 	const p = 0.01
-	s := NewSet(n, p)
+	s := New(n, p)
 	fill(s, 1, n)
 	fp := 0
 	for _, k := range makeKeys(2, probes) {
@@ -138,7 +138,7 @@ func TestFalsePositiveRateSmall(t *testing.T) {
 				const filters = 100
 				fp := 0
 				for f := range filters {
-					s := NewSet(n, p)
+					s := New(n, p)
 					fill(s, uint64(100+f), n)
 					for _, k := range others[:probes/filters] {
 						if s.Contains(k) {
@@ -163,7 +163,7 @@ func TestFalsePositiveRateLow(t *testing.T) {
 	const n = 10_000
 	const p = 1e-5
 	const probes = 10_000_000 // ~100 expected false positives
-	s := NewSet(n, p)
+	s := New(n, p)
 	if k := len(s.salts); k != 14 {
 		t.Fatalf("k = %d, want 14", k)
 	}
@@ -204,7 +204,7 @@ func allocated[T any](fn func() T) (T, int) {
 	return v, bytes
 }
 
-// TestSize checks the memory actually allocated by NewSet: no less than the
+// TestSize checks the memory actually allocated by New: no less than the
 // information-theoretic minimum of n*log2(1/p) bits (which no approximate
 // membership structure can beat). It also checks that Set.Size reports
 // the allocated memory accurately.
@@ -212,7 +212,7 @@ func TestSize(t *testing.T) {
 	for _, n := range []int{1000, 100_000, 10_000_000} {
 		for _, p := range []float64{0.1, 0.01, 0.001} {
 			t.Run(fmt.Sprintf("n=%d/p=%g", n, p), func(t *testing.T) {
-				s, got := allocated(func() *Set { return NewSet(n, p) })
+				s, got := allocated(func() *Set { return New(n, p) })
 				minBytes := int(float64(n) * math.Log2(1/p) / 8)
 				if got < minBytes {
 					t.Errorf("allocated %d bytes, below the theoretical minimum %d; measurement is likely wrong", got, minBytes)
@@ -226,7 +226,7 @@ func TestSize(t *testing.T) {
 					slack = 256 + 8<<10
 				}
 				if size > got || got > size+slack {
-					t.Errorf("Size() = %d, but NewSet allocated %d bytes", size, got)
+					t.Errorf("Size() = %d, but New allocated %d bytes", size, got)
 				}
 			})
 		}
@@ -250,16 +250,16 @@ func TestSeed(t *testing.T) {
 		fill(s, 1, n)
 		return s
 	}
-	a := build(NewSet(n, 0.01))
-	b := build(NewSet(n, 0.01))
-	zero := build(NewSetOptions(n, 0.01, Options{Seed: 0}))
-	other := build(NewSetOptions(n, 0.01, Options{Seed: 1}))
+	a := build(New(n, 0.01))
+	b := build(New(n, 0.01))
+	zero := build(NewWith(n, 0.01, Options{Seed: 0}))
+	other := build(NewWith(n, 0.01, Options{Seed: 1}))
 
 	if !slices.Equal(a.blocks, b.blocks) {
 		t.Error("two sets with the same items and options differ")
 	}
 	if !slices.Equal(a.blocks, zero.blocks) {
-		t.Error("NewSet differs from NewSetOptions with Seed: 0")
+		t.Error("New differs from NewWith with Seed: 0")
 	}
 	if slices.Equal(a.blocks, other.blocks) {
 		t.Error("Seed: 1 gives the same set as the default seed")
@@ -327,7 +327,7 @@ func TestParams(t *testing.T) {
 	}
 }
 
-func TestNewSetPanics(t *testing.T) {
+func TestNewPanics(t *testing.T) {
 	tests := []struct {
 		name   string
 		n      int
@@ -348,18 +348,18 @@ func TestNewSetPanics(t *testing.T) {
 			defer func() {
 				got := recover()
 				if got == nil {
-					t.Fatalf("NewSet(%d, %g) did not panic", tt.n, tt.fpProb)
+					t.Fatalf("New(%d, %g) did not panic", tt.n, tt.fpProb)
 				}
 				if msg, _ := got.(string); !strings.Contains(msg, tt.want) {
-					t.Fatalf("NewSet(%d, %g) panicked with %v, want %q", tt.n, tt.fpProb, got, tt.want)
+					t.Fatalf("New(%d, %g) panicked with %v, want %q", tt.n, tt.fpProb, got, tt.want)
 				}
 			}()
-			NewSet(tt.n, tt.fpProb)
+			New(tt.n, tt.fpProb)
 		})
 	}
 
 	// n=0 is valid: the smallest possible set.
-	if s := NewSet(0, 0.01); s.Size() == 0 {
-		t.Error("NewSet(0, 0.01) has no blocks")
+	if s := New(0, 0.01); s.Size() == 0 {
+		t.Error("New(0, 0.01) has no blocks")
 	}
 }

@@ -20,7 +20,7 @@ go get github.com/nalgeon/unsure
 import "github.com/nalgeon/unsure/bloom"
 
 // A set for 1000 items with a 1% false positive rate.
-set := bloom.NewSet(1000, 0.01)
+set := bloom.New(1000, 0.01)
 
 set.Add([]byte("alice"))
 set.Add([]byte("bob"))

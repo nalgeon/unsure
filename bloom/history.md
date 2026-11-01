@@ -47,11 +47,11 @@ Open: TestSize fails at n=1000/p=0.1 (1.28× > 1.25×).
 k bits anywhere in the 512-bit block (9-bit positions from low 32 bits × salt), k ∈ 1..16.
 Modeled better than split blocks with k words (4.83 vs 4.90 bits/item at p=0.1).
 
-NewSet picks k that maximizes items per block for fpProb: p=0.1 → k=3, 0.01 → 6, 0.001 → 9.
+New picks k that maximizes items per block for fpProb: p=0.1 → k=3, 0.01 → 6, 0.001 → 9.
 
 Contains stays branch-free (AND over k shifted words); no bounds check on in-block word index.
 
-NewSet cost: ~0.1–0.2 ms (sizing math, stops k search once load drops).
+New cost: ~0.1–0.2 ms (sizing math, stops k search once load drops).
 
 | Add           | ContainsHit    | ContainsMiss   | Size                |
 | ------------- | -------------- | -------------- | ------------------- |
@@ -109,7 +109,7 @@ A/B vs xxh3, `-count 8`: geomean −3.5% (in-cache −4–5%, ContainsMiss −6%
 
 Iteration 6 was Go's runtime variant (`memHashFallback`), not upstream wyhash: no spec, no test vectors. Now a direct port of final 4.3 with default secrets, checked against upstream outputs (`test_vector.cpp` + every length 0..100). Save/load can say "wyhash final 4.3, seed s".
 
-Seed-only step (`seed ^= wymix(seed^s0, s1)`) split into `wyseed`, done once in NewSet.
+Seed-only step (`seed ^= wymix(seed^s0, s1)`) split into `wyseed`, done once in New.
 
 Literal port (four 4-byte reads for keys ≤16 bytes) was +14% geomean (+1.8 ns in-cache).
 Same words from two 8-byte reads (rotate / combine halves; n=16 has its own layout) → parity.
@@ -132,7 +132,7 @@ Add, interleaved A/B, `-count 8`: 8.5 / 9.8 / 40.7 → 9.5 / 11.0 / 42.2 (+12% /
 
 The random seed per set gave no protection: with WYHASH_CONDOM=1, keys built so that `x^wyp1 == 0` (≤16 bytes), or that zero the lanes on the first round (>16 bytes), hash the same under every seed. But it did cost reproducibility and merging. Common practice for persisted filters (Parquet, RocksDB, bits-and-blooms) is a fixed, specified hash with no adversarial claim.
 
-Now: seed 0 by default (so the filter is plain "wyhash final 4.3, seed 0"), `NewSetOptions(n, p, Options{Seed})` to override it. Zero Options means default. Docs say the filter isn't designed for adversarial keys.
+Now: seed 0 by default (so the filter is plain "wyhash final 4.3, seed 0"), `NewWith(n, p, Options{Seed})` to override it. Zero Options means default. Docs say the filter isn't designed for adversarial keys.
 
 | Add            | ContainsHit    | ContainsMiss   | Size                |
 | -------------- | -------------- | -------------- | ------------------- |
@@ -140,9 +140,9 @@ Now: seed 0 by default (so the filter is plain "wyhash final 4.3, seed 0"), `New
 
 Hot path unchanged (single `make bloom-bench` run; differences are noise).
 
-## 10. Faster sizing in NewSet
+## 10. Faster sizing in New
 
-NewSet took 100–220 µs at any n: `params` tried every k from 1 up, and bisected each load 40 times from [0, 1024], with a few hundred Poisson terms per step (280 `fpRate` calls at p=0.01, 640 at p≤1e-6).
+New took 100–220 µs at any n: `params` tried every k from 1 up, and bisected each load 40 times from [0, 1024], with a few hundred Poisson terms per step (280 `fpRate` calls at p=0.01, 640 at p≤1e-6).
 
 Now: start k at ⌊log2(1/p)⌋ (the standard filter optimum; ours is 3/6/9 for p=0.1/0.01/0.001) and walk toward the peak. Bracket the load from the standard filter's bits/item (an upper bound, since blocking only raises the FP rate) and bisect to relative 1e-6. ~21 calls per k, ~3 k values. Same k as an exhaustive search at all p tested (TestParams); load never above it, within 1e-6.
 
