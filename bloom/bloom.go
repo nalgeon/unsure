@@ -1,7 +1,7 @@
 // Package bloom implements a fast blocked Bloom filter.
 //
 // Each item maps to a single 512-bit block (one 64-byte cache line)
-// and sets k bits anywhere within it. Every Add or Has touches exactly
+// and sets k bits anywhere within it. Every Add or Contains touches exactly
 // one cache line, so performance holds up even when the filter is much
 // larger than the CPU cache. k is chosen per set to minimize memory
 // for the requested false positive rate.
@@ -28,7 +28,7 @@ var salts = [maxK]uint32{
 	0xa6a3a451, 0x0c5c7fd1, 0x128b2f33, 0xd23f0825,
 }
 
-// Set is a probabilistic set: Has may report false positives
+// Set is a probabilistic set: Contains may report false positives
 // (with probability around fpProb once n items are added),
 // but never false negatives.
 //
@@ -81,9 +81,9 @@ func (s *Set) Add(item []byte) {
 	}
 }
 
-// Has reports whether the item may be in the set.
+// Contains reports whether the item may be in the set.
 // False means the item is definitely not in the set.
-func (s *Set) Has(item []byte) bool {
+func (s *Set) Contains(item []byte) bool {
 	h := wyhash(item, s.seed)
 	b := &s.blocks[(h>>32)*s.nblocks>>32]
 	x := uint32(h)

@@ -15,7 +15,7 @@ import (
 // so the same tests and benchmarks run against both.
 type filter interface {
 	Add(item []byte)
-	Has(item []byte) bool
+	Contains(item []byte) bool
 	Size() int
 }
 
@@ -26,9 +26,9 @@ func newRefSet(n int, fpProb float64) *refSet {
 	return &refSet{ref.NewWithEstimates(uint(n), fpProb)}
 }
 
-func (s *refSet) Add(item []byte)      { s.f.Add(item) }
-func (s *refSet) Has(item []byte) bool { return s.f.Test(item) }
-func (s *refSet) Size() int            { return len(s.f.BitSet().Words()) * 8 }
+func (s *refSet) Add(item []byte)           { s.f.Add(item) }
+func (s *refSet) Contains(item []byte) bool { return s.f.Test(item) }
+func (s *refSet) Size() int                 { return len(s.f.BitSet().Words()) * 8 }
 
 // gloomSet adapts github.com/jcalabro/gloom to the filter interface.
 type gloomSet struct{ f *gloom.Filter }
@@ -37,9 +37,9 @@ func newGloomSet(n int, fpProb float64) *gloomSet {
 	return &gloomSet{gloom.New(uint64(n), fpProb)}
 }
 
-func (s *gloomSet) Add(item []byte)      { s.f.Add(item) }
-func (s *gloomSet) Has(item []byte) bool { return s.f.Test(item) }
-func (s *gloomSet) Size() int            { return int(s.f.NumBlocks()) * 64 }
+func (s *gloomSet) Add(item []byte)           { s.f.Add(item) }
+func (s *gloomSet) Contains(item []byte) bool { return s.f.Test(item) }
+func (s *gloomSet) Size() int                 { return int(s.f.NumBlocks()) * 64 }
 
 type impl struct {
 	name string
@@ -70,7 +70,7 @@ func TestEmpty(t *testing.T) {
 		t.Run(im.name, func(t *testing.T) {
 			s := im.new(1000, 0.01)
 			for _, k := range makeKeys(1, 1000) {
-				if s.Has(k) {
+				if s.Contains(k) {
 					t.Fatalf("empty set reports %x as present", k)
 				}
 			}
@@ -88,7 +88,7 @@ func TestNoFalseNegatives(t *testing.T) {
 					s.Add(k)
 				}
 				for _, k := range keys {
-					if !s.Has(k) {
+					if !s.Contains(k) {
 						t.Fatalf("added key %x not found", k)
 					}
 				}
@@ -114,7 +114,7 @@ func TestEdgeKeys(t *testing.T) {
 				s.Add(k)
 			}
 			for _, k := range keys {
-				if !s.Has(k) {
+				if !s.Contains(k) {
 					t.Fatalf("added key (len=%d) not found", len(k))
 				}
 			}
@@ -139,7 +139,7 @@ func TestFalsePositiveRate(t *testing.T) {
 				}
 				fp := 0
 				for _, k := range others {
-					if s.Has(k) {
+					if s.Contains(k) {
 						fp++
 					}
 				}
@@ -168,7 +168,7 @@ func TestFalsePositiveRateLarge(t *testing.T) {
 	fill(s, 1, n)
 	fp := 0
 	for _, k := range makeKeys(2, probes) {
-		if s.Has(k) {
+		if s.Contains(k) {
 			fp++
 		}
 	}
@@ -195,7 +195,7 @@ func TestFalsePositiveRateSmall(t *testing.T) {
 					s := NewSet(n, p)
 					fill(s, uint64(100+f), n)
 					for _, k := range others[:probes/filters] {
-						if s.Has(k) {
+						if s.Contains(k) {
 							fp++
 						}
 					}
@@ -317,7 +317,7 @@ func BenchmarkAdd(b *testing.B) {
 	}
 }
 
-func BenchmarkHasHit(b *testing.B) {
+func BenchmarkContainsHit(b *testing.B) {
 	for _, n := range benchSizes {
 		// The first keys of seed 1 are among the n added by fill.
 		keys := makeKeys(1, min(n, benchKeys))
@@ -328,7 +328,7 @@ func BenchmarkHasHit(b *testing.B) {
 				b.ReportAllocs()
 				i := 0
 				for b.Loop() {
-					sink = s.Has(keys[i])
+					sink = s.Contains(keys[i])
 					i++
 					if i == len(keys) {
 						i = 0
@@ -339,7 +339,7 @@ func BenchmarkHasHit(b *testing.B) {
 	}
 }
 
-func BenchmarkHasMiss(b *testing.B) {
+func BenchmarkContainsMiss(b *testing.B) {
 	for _, n := range benchSizes {
 		others := makeKeys(2, min(n, benchKeys))
 		for _, im := range impls {
@@ -349,7 +349,7 @@ func BenchmarkHasMiss(b *testing.B) {
 				b.ReportAllocs()
 				i := 0
 				for b.Loop() {
-					sink = s.Has(others[i])
+					sink = s.Contains(others[i])
 					i++
 					if i == len(others) {
 						i = 0
