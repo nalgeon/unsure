@@ -114,3 +114,11 @@ A/B vs xxh3, `-count 8`: geomean −3.5% (in-cache −4–5%, HasMiss −6% at 1
 | 8.3 / 9.6 / 41 | 7.9 / 8.6 / 37 | 7.9 / 8.7 / 38 | 4.84 / 9.90 / 15.49 |
 
 A/B vs iteration 6, `-count 8`: geomean −1.0% (all within ±3%). Hash alone, lengths 3..64: ±6%, geomean +0.9%.
+
+## 8. Add returns "was new" flag, like TestAndAdd (reverted)
+
+Idea: `Add` returns `!Has` from before the call, so dedup needs one call instead of `Has` + `Add` (instead of a separate method). Costs 2 extra instructions per probe (`LSR`, `AND`) on a word that is already loaded.
+
+In-cache Add looks bound by loop instruction count: k=6 → +12 instructions ≈ +1.1 ns. Add isn't inlined, so callers that ignore the flag pay too. `m |= bit &^ w`: same cost. Read pass then write pass: +47%.
+
+Add, interleaved A/B, `-count 8`: 8.5 / 9.8 / 40.7 → 9.5 / 11.0 / 42.2 (+12% / +12% / +3%). Has unchanged. Reverted. If needed, add it as a separate method (9.5 ns vs ~16.5 for Has + Add).
