@@ -8,8 +8,10 @@ bloom-test:
 	go test -C bench -run Bloom .
 
 # Fast single-run benchmark of our Set, compared against the recorded reference results.
+# NewSet is too slow for a fixed 1M iterations, so it runs by time instead.
 bloom-bench:
-	go test -C bench -run x -bench 'Bloom.*//impl=unsure' -benchtime 1000000x . | benchstat -col /impl bench/$(REF) -
+	{ go test -C bench -run x -bench 'Bloom(Add|Contains).*//impl=unsure' -benchtime 1000000x . ; \
+	  go test -C bench -run x -bench 'BloomNew//impl=unsure' -benchtime 200ms . ; } | benchstat -col /impl bench/$(REF) -
 
 # Record reference (bits-and-blooms, gloom) results. Rerun on a new machine or Go version.
 bloom-bench-ref:

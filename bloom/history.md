@@ -139,3 +139,17 @@ Now: seed 0 by default (so the filter is plain "wyhash final 4.3, seed 0"), `New
 | 8.5 / 9.6 / 43 | 8.0 / 8.9 / 38 | 7.8 / 8.6 / 45 | 4.84 / 9.90 / 15.49 |
 
 Hot path unchanged (single `make bloom-bench` run; differences are noise).
+
+## 10. Faster sizing in NewSet
+
+NewSet took 100–220 µs at any n: `params` tried every k from 1 up, and bisected each load 40 times from [0, 1024], with a few hundred Poisson terms per step (280 `fpRate` calls at p=0.01, 640 at p≤1e-6).
+
+Now: start k at ⌊log2(1/p)⌋ (the standard filter optimum; ours is 3/6/9 for p=0.1/0.01/0.001) and walk toward the peak. Bracket the load from the standard filter's bits/item (an upper bound, since blocking only raises the FP rate) and bisect to relative 1e-6. ~21 calls per k, ~3 k values. Same k as an exhaustive search at all p tested (TestParams); load never above it, within 1e-6.
+
+New BenchmarkBloomNew (n=10 / 10k / 1M, p=0.01): 125 / 127 / 178 µs → 28 / 29 / 83 µs. bitsblooms (closed form): 0.075 / 0.87 / 51 µs; gloom: 142 / 1198 / ~1200 µs.
+
+| Add            | ContainsHit    | ContainsMiss   | Size                |
+| -------------- | -------------- | -------------- | ------------------- |
+| 8.8 / 11 / 44  | 8.1 / 8.9 / 39 | 8.2 / 9.2 / 37 | 4.84 / 9.90 / 15.49 |
+
+Hot path untouched (single `make bloom-bench` run; differences are noise). Further options if needed: a faster root finder (~5 calls per k) or a shorter Poisson sum (currently up to load + 12σ).

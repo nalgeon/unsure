@@ -119,24 +119,48 @@ func (s *Set) Size() int {
 // params returns the number of bits per item k and the max average
 // number of items per block that minimize memory for the given fpProb.
 func params(fpProb float64) (k int, load float64) {
-	// The max load first increases with k, then decreases,
-	// so stop at the first k that does worse than the previous one.
-	for kk := 1; kk <= maxK; kk++ {
-		l := maxLoad(fpProb, kk)
-		if kk > 1 && l <= load {
+	// The max load first increases with k, then decreases. The peak is near
+	// log2(1/fpProb), the best k for a standard Bloom filter, so start there
+	// and walk up while the load improves. If it doesn't, walk down instead.
+	k = min(max(int(math.Log2(1/fpProb)), 1), maxK)
+	load = maxLoad(fpProb, k)
+	for _, dir := range []int{1, -1} {
+		start := k
+		for kk := k + dir; kk >= 1 && kk <= maxK; kk += dir {
+			l := maxLoad(fpProb, kk)
+			if l <= load {
+				break
+			}
+			k, load = kk, l
+		}
+		if k != start {
 			break
 		}
-		k, load = kk, l
 	}
 	return k, load
 }
 
 // maxLoad returns the largest average number of items per block
-// that keeps the false positive rate at or below fpProb with k bits per item.
+// that keeps the false positive rate at or below fpProb with k bits per item,
+// rounded down to within a relative 1e-6. Returns 0 if there's no such load
+// above 1e-9.
 func maxLoad(fpProb float64, k int) float64 {
+	// A standard Bloom filter with k bits per item needs -k/ln(1-p^(1/k))
+	// bits per item. Blocking only raises the FP rate, so the same bits
+	// spread over 512-bit blocks give a load just above the answer.
+	hi := 512 * math.Log1p(-math.Pow(fpProb, 1/float64(k))) / -float64(k)
+	for fpRate(hi, k) <= fpProb {
+		hi *= 1.25
+	}
+	lo := hi / 2
+	for fpRate(lo, k) > fpProb {
+		hi, lo = lo, lo/2
+		if lo < 1e-9 {
+			return 0
+		}
+	}
 	// fpRate is increasing in load, so bisect.
-	lo, hi := 0.0, 1024.0
-	for range 40 {
+	for hi-lo > lo*1e-6 {
 		mid := (lo + hi) / 2
 		if fpRate(mid, k) <= fpProb {
 			lo = mid

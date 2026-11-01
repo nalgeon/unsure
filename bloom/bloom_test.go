@@ -237,3 +237,59 @@ func TestSeed(t *testing.T) {
 		}
 	}
 }
+
+// TestParams checks the sizing search against a slow, exhaustive one:
+// every k from 1 to maxK, each load bisected to full precision.
+func TestParams(t *testing.T) {
+	refLoad := func(p float64, k int) float64 {
+		lo, hi := 0.0, 1024.0
+		for range 60 {
+			mid := (lo + hi) / 2
+			if fpRate(mid, k) <= p {
+				lo = mid
+			} else {
+				hi = mid
+			}
+		}
+		return lo
+	}
+	refParams := func(p float64) (k int, load float64) {
+		for kk := 1; kk <= maxK; kk++ {
+			if l := refLoad(p, kk); l > load {
+				k, load = kk, l
+			}
+		}
+		return k, load
+	}
+
+	ps := []float64{0.999, 0.9, 0.5}
+	for p := 0.3; p > 1e-9; p /= 1.7 {
+		ps = append(ps, p)
+	}
+	for _, p := range ps {
+		k, load := params(p)
+		wantK, wantLoad := refParams(p)
+		// Near p=1, several k reach the load cap in fpRate and tie.
+		// Any of them is fine.
+		if k != wantK && refLoad(p, k) < wantLoad*(1-2e-6) {
+			t.Errorf("p=%g: k=%d, want %d", p, k, wantK)
+			continue
+		}
+		if load > wantLoad || load < wantLoad*(1-2e-6) {
+			t.Errorf("p=%g: load=%.9f, want %.9f (within -2e-6)", p, load, wantLoad)
+		}
+		if fpRate(load, k) > p {
+			t.Errorf("p=%g: fpRate(%g, %d) = %g exceeds p", p, load, k, fpRate(load, k))
+		}
+	}
+
+	// Pin the common cases.
+	for _, tt := range []struct {
+		p float64
+		k int
+	}{{0.1, 3}, {0.01, 6}, {0.001, 9}} {
+		if k, _ := params(tt.p); k != tt.k {
+			t.Errorf("p=%g: k=%d, want %d", tt.p, k, tt.k)
+		}
+	}
+}

@@ -87,6 +87,25 @@ func fillBloom(s bloomFilter, seed uint64, n int) {
 	}
 }
 
+// bloomNewSizes cover a tiny filter (where sizing dominates), and two where
+// allocating and zeroing the memory takes a growing share.
+var bloomNewSizes = []int{10, 10_000, 1_000_000}
+
+var sinkFilter bloomFilter
+
+func BenchmarkBloomNew(b *testing.B) {
+	for _, n := range bloomNewSizes {
+		for _, im := range bloomImpls {
+			b.Run(fmt.Sprintf("n=%d/impl=%s", n, im.name), func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					sinkFilter = im.new(n, bloomBenchP)
+				}
+			})
+		}
+	}
+}
+
 func BenchmarkBloomAdd(b *testing.B) {
 	for _, n := range bloomBenchSizes {
 		keys := makeKeys(1, min(n, bloomBenchKeys))
