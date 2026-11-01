@@ -10,8 +10,6 @@ package bloom
 import (
 	"math"
 	"math/rand/v2"
-
-	"github.com/zeebo/xxh3"
 )
 
 // block is one cache line: 8 words of 64 bits.
@@ -74,7 +72,7 @@ func NewSet(n int, fpProb float64) *Set {
 
 // Add adds an item to the set.
 func (s *Set) Add(item []byte) {
-	h := xxh3.HashSeed(item, s.seed)
+	h := wyhash(item, s.seed)
 	b := &s.blocks[(h>>32)*s.nblocks>>32]
 	x := uint32(h)
 	for _, salt := range s.salts {
@@ -86,7 +84,7 @@ func (s *Set) Add(item []byte) {
 // Has reports whether the item may be in the set.
 // False means the item is definitely not in the set.
 func (s *Set) Has(item []byte) bool {
-	h := xxh3.HashSeed(item, s.seed)
+	h := wyhash(item, s.seed)
 	b := &s.blocks[(h>>32)*s.nblocks>>32]
 	x := uint32(h)
 	m := uint64(1)

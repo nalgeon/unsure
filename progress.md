@@ -86,3 +86,16 @@ Memory unchanged; FP rate lower for free where rounding was large: n=100k → 0.
 | 8.8 / 10 / 41 | 8.3 / 9.2 / 38 | 8.3 / 9.3 / 38 | 4.84 / 9.90 / 15.49 |
 
 A/B, `-count 8`: geomean −0.65% (Add −3–4% in-cache; Has at 50M +2–4%). Speed-neutral.
+
+## 6. In-house wyhash instead of xxh3
+
+- Drop the `zeebo/xxh3` dependency (and its `cpuid` indirect dep). ~50-line `wyhash.go`: same algorithm
+  as Go's runtime fallback hash, fixed public secrets + per-set seed, so output is stable for save/load.
+- Isolated, latency-bound 16-byte hash: maphash 3.8 ns, wyhash 5.4, xxh3 6.9. Inside Add/Has
+  (throughput-bound) wyhash still comes out ahead of xxh3.
+
+| Add            | HasHit         | HasMiss        | Size                |
+| -------------- | -------------- | -------------- | ------------------- |
+| 8.4 / 9.7 / 40 | 7.8 / 8.8 / 37 | 7.8 / 8.6 / 36 | 4.84 / 9.90 / 15.49 |
+
+A/B vs xxh3, `-count 8`: geomean −3.5% (in-cache −4–5%, HasMiss −6% at 1M/50M; rest ~). Size, FP unchanged.
