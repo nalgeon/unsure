@@ -37,7 +37,7 @@ type Set struct {
 	blocks  []block
 	nblocks uint64
 	salts   []uint32 // salts[:k]
-	seed    uint64
+	seed    uint64   // premixed with wyseed
 }
 
 // NewSet creates a set for n items with the target false positive probability fpProb.
@@ -66,7 +66,7 @@ func NewSet(n int, fpProb float64) *Set {
 		blocks:  blocks,
 		nblocks: nblocks,
 		salts:   salts[:k],
-		seed:    rand.Uint64(),
+		seed:    wyseed(rand.Uint64()),
 	}
 }
 

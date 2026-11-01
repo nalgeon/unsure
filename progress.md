@@ -99,3 +99,18 @@ A/B, `-count 8`: geomean −0.65% (Add −3–4% in-cache; Has at 50M +2–4%). 
 | 8.4 / 9.7 / 40 | 7.8 / 8.8 / 37 | 7.8 / 8.6 / 36 | 4.84 / 9.90 / 15.49 |
 
 A/B vs xxh3, `-count 8`: geomean −3.5% (in-cache −4–5%, HasMiss −6% at 1M/50M; rest ~). Size, FP unchanged.
+
+## 7. Exact upstream wyhash (final 4.3)
+
+- Iteration 6 was Go's runtime variant (`memHashFallback`), not upstream wyhash: no spec, no test vectors.
+  Now a direct port of final 4.3 with default secrets, checked against upstream outputs
+  (`test_vector.cpp` + every length 0..100). Save/load can say "wyhash final 4.3, seed s".
+- Seed-only step (`seed ^= wymix(seed^s0, s1)`) split into `wyseed`, done once in NewSet.
+- Literal port (four 4-byte reads for keys ≤16 bytes) was +14% geomean (+1.8 ns in-cache).
+  Same words from two 8-byte reads (rotate / combine halves; n=16 has its own layout) → parity.
+
+| Add            | HasHit         | HasMiss        | Size                |
+| -------------- | -------------- | -------------- | ------------------- |
+| 8.3 / 9.6 / 41 | 7.9 / 8.6 / 37 | 7.9 / 8.7 / 38 | 4.84 / 9.90 / 15.49 |
+
+A/B vs iteration 6, `-count 8`: geomean −1.0% (all within ±3%). Hash alone, lengths 3..64: ±6%, geomean +0.9%.
