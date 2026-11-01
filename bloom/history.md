@@ -1,4 +1,4 @@
-# Bloom filter progress
+# Bloom filter history
 
 Benchmarks: `make bloom-bench`, Apple M1, p=0.01, 16-byte keys. ns/op for n = 10k / 1M / 50M.
 Size: bits/item for p = 0.1 / 0.01 / 0.001.
