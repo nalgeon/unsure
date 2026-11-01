@@ -6,6 +6,12 @@
 // larger than the CPU cache. k is chosen per set to minimize memory
 // for the requested false positive rate.
 //
+// The tradeoff is memory at low false positive rates. Some blocks get
+// more items than average, and at low rates most false positives come
+// from them, so the average must be kept lower. At false positive rates
+// of 1e-4 and above, the set uses at most ~15% more memory than a standard
+// Bloom filter. Below that, the overhead grows: +34% at 1e-6, +70% at 1e-8.
+//
 // Hashing is deterministic: wyhash final 4.3 with a fixed seed
 // (0 unless set in [Options]), so the same items always produce the same set.
 // The filter is not designed for adversarially chosen items: anyone who knows
