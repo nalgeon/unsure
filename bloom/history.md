@@ -150,6 +150,6 @@ New BenchmarkBloomNew (n=10 / 10k / 1M, p=0.01): 125 / 127 / 178 µs → 28 / 29
 
 | Add            | ContainsHit    | ContainsMiss   | Size                |
 | -------------- | -------------- | -------------- | ------------------- |
-| 8.8 / 11 / 44  | 8.1 / 8.9 / 39 | 8.2 / 9.2 / 37 | 4.84 / 9.90 / 15.49 |
+| 8.5 / 9.7 / 38 | 8.0 / 8.8 / 34 | 8.0 / 8.8 / 34 | 4.84 / 9.90 / 15.49 |
 
-Hot path untouched (single `make bloom-bench` run; differences are noise). Further options if needed: a faster root finder (~5 calls per k) or a shorter Poisson sum (currently up to load + 12σ).
+Hot path untouched. Benchmarks from `make bloom-bench-full` (`-count 10`). Geomean vs bitsblooms / gloom: 13.7 vs 57.2 / 29.9 ns (4.2× / 2.2× faster). Further options if needed: a faster root finder (~5 calls per k) or a shorter Poisson sum (currently up to load + 12σ).
