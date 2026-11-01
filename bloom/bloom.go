@@ -8,8 +8,10 @@
 package bloom
 
 import (
-	"hash/maphash"
 	"math"
+	"math/rand/v2"
+
+	"github.com/zeebo/xxh3"
 )
 
 // block is one cache line: 8 words of 64 bits.
@@ -37,7 +39,7 @@ type Set struct {
 	blocks  []block
 	nblocks uint64
 	salts   []uint32 // salts[:k]
-	seed    maphash.Seed
+	seed    uint64
 }
 
 // NewSet creates a set for n items with the target false positive probability fpProb.
@@ -66,13 +68,13 @@ func NewSet(n int, fpProb float64) *Set {
 		blocks:  blocks,
 		nblocks: nblocks,
 		salts:   salts[:k],
-		seed:    maphash.MakeSeed(),
+		seed:    rand.Uint64(),
 	}
 }
 
 // Add adds an item to the set.
 func (s *Set) Add(item []byte) {
-	h := maphash.Bytes(s.seed, item)
+	h := xxh3.HashSeed(item, s.seed)
 	b := &s.blocks[(h>>32)*s.nblocks>>32]
 	x := uint32(h)
 	for _, salt := range s.salts {
@@ -84,7 +86,7 @@ func (s *Set) Add(item []byte) {
 // Has reports whether the item may be in the set.
 // False means the item is definitely not in the set.
 func (s *Set) Has(item []byte) bool {
-	h := maphash.Bytes(s.seed, item)
+	h := xxh3.HashSeed(item, s.seed)
 	b := &s.blocks[(h>>32)*s.nblocks>>32]
 	x := uint32(h)
 	m := uint64(1)

@@ -75,3 +75,14 @@ Memory unchanged; FP rate lower for free where rounding was large: n=100k → 0.
 - Hypothesis: maphash is mostly call overhead for short keys. Wrong: on arm64 it's a tight
   AES asm routine. 16-byte keys: maphash 3.6 ns, wyhash (pure Go, not inlinable) 4.3 ns.
 - Has got ~1 ns slower (8.4 → 9.6 at n=10k). Reverted to maphash.
+
+## 5. xxh3 instead of maphash
+
+- `zeebo/xxh3` `HashSeed` with a random per-set seed (still not saved; but xxh3 has a fixed spec,
+  so save/load becomes possible). Pure Go on arm64; 16-byte keys: 3.0 ns vs maphash 3.6 ns.
+
+| Add           | HasHit         | HasMiss        | Size                |
+| ------------- | -------------- | -------------- | ------------------- |
+| 8.8 / 10 / 41 | 8.3 / 9.2 / 38 | 8.3 / 9.3 / 38 | 4.84 / 9.90 / 15.49 |
+
+A/B, `-count 8`: geomean −0.65% (Add −3–4% in-cache; Has at 50M +2–4%). Speed-neutral.
