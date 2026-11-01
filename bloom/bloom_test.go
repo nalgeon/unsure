@@ -6,6 +6,7 @@ import (
 	"math"
 	"runtime"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -291,5 +292,42 @@ func TestParams(t *testing.T) {
 		if k, _ := params(tt.p); k != tt.k {
 			t.Errorf("p=%g: k=%d, want %d", tt.p, k, tt.k)
 		}
+	}
+}
+
+func TestNewSetPanics(t *testing.T) {
+	tests := []struct {
+		name   string
+		n      int
+		fpProb float64
+		want   string
+	}{
+		{"negative n", -1, 0.01, "n must not be negative"},
+		{"p=0", 1000, 0, "fpProb must be in (0, 1)"},
+		{"p=1", 1000, 1, "fpProb must be in (0, 1)"},
+		{"p<0", 1000, -0.1, "fpProb must be in (0, 1)"},
+		{"p>1", 1000, 1.5, "fpProb must be in (0, 1)"},
+		{"p=NaN", 1000, math.NaN(), "fpProb must be in (0, 1)"},
+		{"tiny p", 1000, 1e-300, "fpProb is too small"},
+		{"huge n", math.MaxInt, 0.01, "set is too large"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				got := recover()
+				if got == nil {
+					t.Fatalf("NewSet(%d, %g) did not panic", tt.n, tt.fpProb)
+				}
+				if msg, _ := got.(string); !strings.Contains(msg, tt.want) {
+					t.Fatalf("NewSet(%d, %g) panicked with %v, want %q", tt.n, tt.fpProb, got, tt.want)
+				}
+			}()
+			NewSet(tt.n, tt.fpProb)
+		})
+	}
+
+	// n=0 is valid: the smallest possible set.
+	if s := NewSet(0, 0.01); s.Size() == 0 {
+		t.Error("NewSet(0, 0.01) has no blocks")
 	}
 }

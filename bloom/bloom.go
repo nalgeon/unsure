@@ -43,10 +43,9 @@ var salts = [maxK]uint32{
 //
 // Set is not safe for concurrent use if any goroutine calls Add.
 type Set struct {
-	blocks  []block
-	nblocks uint64
-	salts   []uint32 // salts[:k]
-	seed    uint64   // premixed with wyseed
+	blocks []block
+	salts  []uint32 // salts[:k]
+	seed   uint64   // premixed with wyseed
 }
 
 // Options configures a Set. The zero value gives the defaults.
@@ -58,13 +57,16 @@ type Options struct {
 
 // NewSet creates a set for n items with the target false positive
 // probability fpProb, using the default options.
-// Panics if fpProb is not in (0, 1).
+// Panics if n is negative or fpProb is not in (0, 1).
 func NewSet(n int, fpProb float64) *Set {
 	return NewSetOptions(n, fpProb, Options{})
 }
 
 // NewSetOptions is like [NewSet], but with the given options.
 func NewSetOptions(n int, fpProb float64, opts Options) *Set {
+	if n < 0 {
+		panic("bloom: n must not be negative")
+	}
 	if !(fpProb > 0 && fpProb < 1) {
 		panic("bloom: fpProb must be in (0, 1)")
 	}
@@ -83,19 +85,17 @@ func NewSetOptions(n int, fpProb float64, opts Options) *Set {
 	blocks := append([]block(nil), make([]block, nblocks)...)
 	// Block index math needs nblocks <= 2^32 (see Add), so cap it.
 	blocks = blocks[:min(uint64(cap(blocks)), math.MaxUint32)]
-	nblocks = uint64(len(blocks))
 	return &Set{
-		blocks:  blocks,
-		nblocks: nblocks,
-		salts:   salts[:k],
-		seed:    wyseed(opts.Seed),
+		blocks: blocks,
+		salts:  salts[:k],
+		seed:   wyseed(opts.Seed),
 	}
 }
 
 // Add adds an item to the set.
 func (s *Set) Add(item []byte) {
 	h := wyhash(item, s.seed)
-	b := &s.blocks[(h>>32)*s.nblocks>>32]
+	b := &s.blocks[(h>>32)*uint64(len(s.blocks))>>32]
 	x := uint32(h)
 	for _, salt := range s.salts {
 		pos := (x * salt) >> 23 // 9 bits: 0..511
@@ -107,7 +107,7 @@ func (s *Set) Add(item []byte) {
 // False means the item is definitely not in the set.
 func (s *Set) Contains(item []byte) bool {
 	h := wyhash(item, s.seed)
-	b := &s.blocks[(h>>32)*s.nblocks>>32]
+	b := &s.blocks[(h>>32)*uint64(len(s.blocks))>>32]
 	x := uint32(h)
 	m := uint64(1)
 	for _, salt := range s.salts {
