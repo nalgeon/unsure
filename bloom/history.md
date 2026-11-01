@@ -127,3 +127,15 @@ Idea: `Add` returns `!Contains` from before the call, so dedup needs one call in
 In-cache Add looks bound by loop instruction count: k=6 → +12 instructions ≈ +1.1 ns. Add isn't inlined, so callers that ignore the flag pay too. `m |= bit &^ w`: same cost. Read pass then write pass: +47%.
 
 Add, interleaved A/B, `-count 8`: 8.5 / 9.8 / 40.7 → 9.5 / 11.0 / 42.2 (+12% / +12% / +3%). Contains unchanged. Reverted. If needed, add it as a separate method (9.5 ns vs ~16.5 for Contains + Add).
+
+## 9. Fixed default seed, Options
+
+The random seed per set gave no protection: with WYHASH_CONDOM=1, keys built so that `x^wyp1 == 0` (≤16 bytes), or that zero the lanes on the first round (>16 bytes), hash the same under every seed. But it did cost reproducibility and merging. Common practice for persisted filters (Parquet, RocksDB, bits-and-blooms) is a fixed, specified hash with no adversarial claim.
+
+Now: seed 0 by default (so the filter is plain "wyhash final 4.3, seed 0"), `NewSetOptions(n, p, Options{Seed})` to override it. Zero Options means default. Docs say the filter isn't designed for adversarial keys.
+
+| Add            | ContainsHit    | ContainsMiss   | Size                |
+| -------------- | -------------- | -------------- | ------------------- |
+| 8.5 / 9.6 / 43 | 8.0 / 8.9 / 38 | 7.8 / 8.6 / 45 | 4.84 / 9.90 / 15.49 |
+
+Hot path unchanged (single `make bloom-bench` run; differences are noise).

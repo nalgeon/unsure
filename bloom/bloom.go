@@ -5,12 +5,15 @@
 // one cache line, so performance holds up even when the filter is much
 // larger than the CPU cache. k is chosen per set to minimize memory
 // for the requested false positive rate.
+//
+// Hashing is deterministic: wyhash final 4.3 with a fixed seed
+// (0 unless set in [Options]), so the same items always produce the same set.
+// The filter is not designed for adversarially chosen items: anyone who knows
+// the seed (or crafts keys that cancel it out) can produce false positives
+// at will. Don't rely on it where false positives are a security concern.
 package bloom
 
-import (
-	"math"
-	"math/rand/v2"
-)
+import "math"
 
 // block is one cache line: 8 words of 64 bits.
 type block [8]uint64
@@ -40,9 +43,22 @@ type Set struct {
 	seed    uint64   // premixed with wyseed
 }
 
-// NewSet creates a set for n items with the target false positive probability fpProb.
+// Options configures a Set. The zero value gives the defaults.
+type Options struct {
+	// Seed for the hash function. Default 0.
+	// Sets must have the same seed to be merged or compared.
+	Seed uint64
+}
+
+// NewSet creates a set for n items with the target false positive
+// probability fpProb, using the default options.
 // Panics if fpProb is not in (0, 1).
 func NewSet(n int, fpProb float64) *Set {
+	return NewSetOptions(n, fpProb, Options{})
+}
+
+// NewSetOptions is like [NewSet], but with the given options.
+func NewSetOptions(n int, fpProb float64, opts Options) *Set {
 	if !(fpProb > 0 && fpProb < 1) {
 		panic("bloom: fpProb must be in (0, 1)")
 	}
@@ -66,7 +82,7 @@ func NewSet(n int, fpProb float64) *Set {
 		blocks:  blocks,
 		nblocks: nblocks,
 		salts:   salts[:k],
-		seed:    wyseed(rand.Uint64()),
+		seed:    wyseed(opts.Seed),
 	}
 }
 
