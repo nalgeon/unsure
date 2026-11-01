@@ -183,9 +183,7 @@ func maxLoad(fpProb float64, k int) float64 {
 // Items per block follow (approximately) a Poisson distribution.
 // A block with j items has a given bit set with probability
 // 1-(511/512)^(j*k), so a lookup falsely matches all k bits with
-// probability (1-(511/512)^(j*k))^k. Poisson slightly overestimates
-// the spread of the actual binomial distribution, so the result
-// is a bit conservative.
+// probability (1-(511/512)^(j*k))^k.
 func fpRate(load float64, k int) float64 {
 	if load <= 0 {
 		return 0

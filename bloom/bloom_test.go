@@ -156,6 +156,38 @@ func TestFalsePositiveRateSmall(t *testing.T) {
 	}
 }
 
+// TestFalsePositiveRateLow checks a low false positive rate, where k is high
+// enough to use salts the other tests don't. The filter is small so probes
+// stay in cache.
+func TestFalsePositiveRateLow(t *testing.T) {
+	const n = 10_000
+	const p = 1e-5
+	const probes = 10_000_000 // ~100 expected false positives
+	s := NewSet(n, p)
+	if k := len(s.salts); k != 14 {
+		t.Fatalf("k = %d, want 14", k)
+	}
+	// Drop the allocator's extra blocks, which would lower the rate
+	// well below the target at this small size and hide problems.
+	_, load := params(p)
+	s.blocks = s.blocks[:int(math.Ceil(n/load))]
+	fill(s, 1, n)
+	key := make([]byte, 16)
+	binary.LittleEndian.PutUint64(key[:8], 2)
+	fp := 0
+	for i := range probes {
+		binary.LittleEndian.PutUint64(key[8:], uint64(i))
+		if s.Contains(key) {
+			fp++
+		}
+	}
+	rate := float64(fp) / probes
+	t.Logf("requested=%g actual=%.3g (fp=%d)", p, rate, fp)
+	if rate > p*1.25 {
+		t.Errorf("false positive rate %.3g exceeds requested %g", rate, p)
+	}
+}
+
 // allocated returns the number of heap bytes allocated by fn.
 // Takes the min of several runs, since unrelated runtime allocations
 // may occasionally land within a single measurement.
