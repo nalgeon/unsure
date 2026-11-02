@@ -131,16 +131,12 @@ func params(fpProb float64) (k int, load float64) {
 	k = min(max(int(math.Log2(1/fpProb)), 1), maxK)
 	load = maxLoad(fpProb, k)
 	for _, dir := range []int{1, -1} {
-		start := k
-		for kk := k + dir; kk >= 1 && kk <= maxK; kk += dir {
-			l := maxLoad(fpProb, kk)
+		for k+dir >= 1 && k+dir <= maxK {
+			l := maxLoad(fpProb, k+dir)
 			if l <= load {
 				break
 			}
-			k, load = kk, l
-		}
-		if k != start {
-			break
+			k, load = k+dir, l
 		}
 	}
 	return k, load
