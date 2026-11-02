@@ -1,14 +1,14 @@
 # Bloom filter
 
-A fast, zero-dependency Bloom filter implemented in Go.
+A simple and fast Bloom filter implemented in Go.
 
 ## What is a Bloom filter
 
-A Bloom filter is a set that trades certainty for space. It can tell you that an item is _definitely not_ in the set, or that it _probably is_ (which might be a false positive). It doesn't store the items themselves, so it uses much less memory than a regular set — about 10 bits per item for a 1% false positive rate, no matter how large the items are.
+A Bloom filter is a set that trades certainty for space. It can tell you that an item is _definitely not_ in the set, or that it _probably is_ (which might be a false positive). It doesn't actually store the items, so it's much more compact than a regular set — about 10 bits per item for a 1% false positive rate, regardless of the item size.
 
-A common use is to put a filter in front of something expensive, like reading from a disk or making a network call. If the filter says "no", you skip the lookup. If it says "yes", you do the lookup, and it's only wrong occasionally.
+A Bloom filter often resides in memory and helps minimize expensive I/O operations such as disk reads or network calls. You check if an item is in the filter, and if the answer is "no", you skip the costly lookup. If the answer is "yes", you still have to perform the lookup because it might be a false positive.
 
-Unlike a regular set, a Bloom filter can't iterate, count, or remove items.
+You can add an item to a Bloom filter and check if an item is in the filter, but you cannot delete an item, count the number of items, or iterate over them.
 
 ## Usage
 
@@ -31,17 +31,20 @@ set.Contains([]byte("carol")) // false (or, rarely, true)
 
 The set is sized for the given number of items with a given false positive rate. You can add more, but the false positive rate will go up.
 
-Hashing is deterministic (wyhash with a fixed seed), so the same items always produce the same set. The filter is not designed for adversarial input: don't rely on it where an attacker could benefit from false positives.
+Hashing is deterministic (wyhash with a fixed seed), so the same items always produce the same set. The filter is not designed for adversarial input: don't rely on it if an attacker could benefit from false positives.
 
 ## How it works
 
-**Classic Bloom filter**. The filter is a big array of bits, all zero at first. To add an item, compute k hashes of it and set the k bits they point to. To check an item, compute the same k hashes and see if all k bits are set. If any bit is zero, the item was never added. If all are set, it probably was, but it's not guaranteed, since other items could have set those bits.
+**Classic Bloom filter**. The filter is a large array of bits, all set to zero at first. To add an item, you compute k hash values for it and set the k bits at those positions. To check if an item is in the filter, you compute the same k hashes and check if all k bits are set:
 
-The k bits are spread randomly over the whole array. When the filter is larger than the CPU cache, each bit access could result in a cache miss, so a lookup may wait on memory k times.
+- If any of the bits is not set, the item definitely was never added.
+- If all the bits are set, the item was probably added, but it's not guaranteed (the bits could have been set by other items).
 
-**This implementation** is a _blocked_ Bloom filter. The bit array is split into 512-bit blocks, each the size of one CPU cache line. An item is hashed once: part of the hash picks a block, and the rest picks k bits inside that block. Each add or check touches exactly one cache line, so it stays fast even for very large filters.
+The k bits are randomly distributed throughout the entire array. When the filter is larger than the CPU cache, each bit access could result in a cache miss, so a lookup may wait on memory k times.
 
-The price is a bit more memory. Some blocks end up with more items than others, which raises the false positive rate, so the filter has to be a little larger to make up for it. The filter accounts for this when sizing itself: it computes the actual false positive rate of the blocked layout and picks the k and size that use the least memory. Compared to a classic filter, it uses about 3% more memory at a 1% false positive rate, 8% more at 0.1%, and up to ~15% down to 0.01%. The overhead grows at very low rates (see the package docs).
+**This implementation** is a _blocked_ Bloom filter. The bit array is divided into 512-bit blocks, each matching the size of a CPU cache line. When you add or check an item, it is hashed once: part of the hash selects a block, and the rest selects k bits within that block. Each add or check only accesses one cache line, so the filter stays fast even when it's very large.
+
+A blocked Bloom filter uses more memory than a classic one. Some blocks end up with more items than others, which increases the false positive rate. To make up for this, the filter needs to be a bit larger. Compared to a standard Bloom filter, it uses about 3% more memory at a 1% false positive rate, 8% more at 0.1%, and 15% more at 0.01%. The extra memory needed goes up even more at very low false positive rates (see the package docs for details).
 
 The filter uses [wyhash](https://github.com/wangyi-fudan/wyhash) for hashing. It performs roughly the same as [xxh3](https://xxhash.com) but has a much simpler implementation, without SIMD or assembly.
 

@@ -1,6 +1,6 @@
 # unsure: Probabilistic data structures in Go
 
-Probabilistic data structures give approximate answers for large datasets, using much less memory and time than exact methods. Is this item in the set? How many unique items are there? Which items appear most often? Each answer has some uncertainty, but you can decide how much error is acceptable.
+Probabilistic data structures give you approximate answers to questions about the data they handle. Does the set contain a certain item? How many unique items are in the collection? Which items appear most often? Unlike regular data structures, the answers might not be exact, and you can choose the acceptable error rate.
 
 The `unsure` module implements these structures in Go, with each structure in its own package. It's designed to be fast and simple, and it has no third-party dependencies.
 
