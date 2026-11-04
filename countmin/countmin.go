@@ -1,22 +1,36 @@
-// Package countmin implements a count-min sketch with conservative update.
+// Package countmin implements a Count-min sketch with conservative update.
 //
 // A sketch estimates how many times each item was added. The estimate is
-// never below the true count, and is above it by more than epsilon*N
-// with probability at most delta, where N is the total of all counts added.
-// Estimates are capped at [math.MaxUint32] (about 4.3 billion): an item
-// added more times than that is reported as MaxUint32.
+// never less than the actual count, and is higher by more than epsilon*N
+// with probability at most delta, where epsilon and delta are the parameters
+// passed to [New] and N is the sum of all counts added. Estimates are capped
+// at [math.MaxUint32] (about 4.3 billion): if an item is added more times
+// than that, it is reported as MaxUint32.
 //
-// The sketch is d = ⌈ln(1/delta)⌉ rows of w = ⌈e/epsilon⌉ uint32 counters.
-// Each item maps to one counter per row, and its estimate is the smallest
-// of them. Add uses conservative update: it raises only the item's counters
-// that would otherwise be below the new estimate. This keeps the same
-// guarantee, but on skewed data the actual error is much lower than with
-// plain increments. The tradeoff is that counts can't be decremented.
+// The sketch uses d = ⌈ln(1/delta)⌉ rows, each with w = ⌈e/epsilon⌉ uint32
+// counters. Each item maps to one counter in each row, and its estimate is
+// the smallest value among them. The Add method uses a conservative update:
+// it only increases the item's counters that are below the new estimate.
+// This keeps the same accuracy guarantee, but for skewed data, the actual
+// error is much lower than with regular increments. The tradeoff is that
+// counts can't be decreased.
 //
-// Hashing is deterministic: wyhash final 4.3 with a fixed seed
-// (0 unless set in [Options]), so the same items always produce the same
-// sketch. The sketch is not designed for adversarially chosen items:
-// anyone who knows the seed can craft items that inflate others' estimates.
+// To choose epsilon, note that the error is relative to the total N, not to
+// each item's count. With epsilon = 0.001 and N = 1 million, estimates may be
+// off by up to 1000, so counts much smaller than epsilon*N are lost in noise.
+// Pick epsilon below the smallest fraction of N you care about.
+//
+// Delta is the probability that a given estimate exceeds that bound;
+// 0.01 is a common choice, and lowering it is cheap because d grows
+// with ln(1/delta).
+//
+// The sketch takes about 4*d*w bytes: ~55 KB for (ε=0.001, δ=0.01),
+// ~540 KB for (ε=0.0001, δ=0.01), and ~5.4 MB for (ε=0.00001, δ=0.01).
+//
+// Hashing is deterministic: wyhash final 4.3 with a fixed seed (0 unless set
+// in [Options]), so the same items always produce the same sketch. The sketch
+// is not designed for adversarially chosen items: anyone who knows the seed
+// can create items that artificially increase other items' estimates.
 package countmin
 
 import (
