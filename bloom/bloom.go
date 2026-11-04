@@ -1,22 +1,33 @@
 // Package bloom implements a fast blocked Bloom filter.
 //
-// Each item maps to a single 512-bit block (one 64-byte cache line)
-// and sets k bits anywhere within it. Every Add or Contains touches exactly
-// one cache line, so performance holds up even when the filter is much
-// larger than the CPU cache. k is chosen per set to minimize memory
-// for the requested false positive rate.
+// A Bloom filter is a compact set that answers "is this item in the set?".
+// A "no" is always correct. A "yes" is wrong with probability about fpProb
+// (the false positive rate) once n items are added, where n and fpProb are
+// the parameters passed to [New]. Items can't be removed or listed.
 //
-// The tradeoff is memory at low false positive rates. Some blocks get
-// more items than average, and at low rates most false positives come
-// from them, so the average must be kept lower. At false positive rates
-// of 1e-4 and above, the set uses at most ~15% more memory than a standard
-// Bloom filter. Below that, the overhead grows: +34% at 1e-6, +70% at 1e-8.
+// A standard Bloom filter sets k bits per item spread across the whole
+// filter. This one maps each item to a single 512-bit block (one 64-byte
+// cache line) and sets k bits within it. So every Add or Contains reads
+// one cache line, and stays fast even when the filter is much larger than
+// the CPU cache. k is chosen to minimize memory for the given fpProb.
 //
-// Hashing is deterministic: wyhash final 4.3 with a fixed seed
-// (0 unless set in [Options]), so the same items always produce the same set.
-// The filter is not designed for adversarially chosen items: anyone who knows
-// the seed (or crafts keys that cancel it out) can produce false positives
-// at will. Don't rely on it where false positives are a security concern.
+// The tradeoff is memory at low false positive rates. Some blocks get more
+// items than average, and at low rates most false positives come from them,
+// so the filter has to keep the average lower. Down to fpProb = 1e-4, it
+// uses at most ~15% more memory than a standard Bloom filter. Below that,
+// the overhead grows: +34% at 1e-6, +70% at 1e-8.
+//
+// To choose n, use the largest number of items you expect. Adding more
+// still works, but the false positive rate grows quickly: with fpProb = 0.01,
+// it's ~5% at 1.5n and ~12% at 2n. To choose fpProb, weigh the cost of a
+// false positive (usually an unneeded lookup) against memory: each 10× lower
+// rate costs about 5–6 more bits per item. The set takes about 4.8 bits per
+// item at fpProb = 0.1, 9.9 bits at 0.01, and 15.5 bits at 0.001.
+//
+// Hashing is deterministic: wyhash final 4.3 with a fixed seed (0 unless set
+// in [Options]), so the same items always produce the same set. The filter
+// is not designed for adversarially chosen items: anyone who knows the seed
+// (or crafts keys that cancel it out) can produce false positives at will.
 package bloom
 
 import (
