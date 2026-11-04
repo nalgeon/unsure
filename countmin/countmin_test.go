@@ -66,7 +66,8 @@ func (st *stream) fill(s *Sketch) {
 func TestParams(t *testing.T) {
 	tests := []struct {
 		eps, delta float64
-		d, w       int
+		d          int
+		w          uint64
 	}{
 		{0.5, 0.5, 1, 6},
 		{0.01, 0.01, 5, 272},
@@ -84,7 +85,7 @@ func TestParams(t *testing.T) {
 			t.Errorf("New(%g, %g): d = %d, want %d", tt.eps, tt.delta, len(s.salts), tt.d)
 		}
 		// Allocator slack may only widen the rows.
-		if s.width < uint64(tt.w) || len(s.counters) != tt.d*int(s.width) {
+		if s.width < tt.w || len(s.counters) != tt.d*int(s.width) {
 			t.Errorf("New(%g, %g): width = %d, %d counters, want width >= %d",
 				tt.eps, tt.delta, s.width, len(s.counters), tt.w)
 		}

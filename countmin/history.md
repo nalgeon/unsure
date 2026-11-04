@@ -41,4 +41,4 @@ Design: d = ⌈ln 1/δ⌉ ≤ 16 rows of w = ⌈e/ε⌉ uint32 counters in one s
 | ------------ | ------------- | -------------- | ------ |
 | 13 / 17 / 80 | 8.7 / 12 / 50 | 139 / 23 / 0.3 | 536 KB |
 
-vs baseline: geomean 21.1 vs 54.6 ns (2.6× faster), half the memory (uint32), 2–2.7× lower mean error (conservative update). Add out of cache is d dependent misses (read pass, then write pass); Count is d misses.
+vs baseline: geomean 21.1 vs 54.6 ns (2.6× faster), half the memory (uint32), 2–2.7× lower mean error (conservative update). Out of cache, both Add and Count make d independent loads (row indices come from h alone, so the misses overlap). Add then writes all d lines back, which are already cached but now dirty.

@@ -6,6 +6,7 @@ CM_REF := testdata/countmin-reference.txt
 
 # Run the tests: our Set, then the size comparison against other libraries.
 bloom-test:
+	@GOOS=linux GOARCH=386 go vet ./bloom
 	@go test ./bloom
 	@go test -C bench -run Bloom .
 
@@ -27,6 +28,7 @@ bloom-size:
 
 # Run the tests: our Sketch, then the accuracy comparison against other libraries.
 countmin-test:
+	@GOOS=linux GOARCH=386 go vet ./countmin
 	@go test ./countmin
 	@go test -C bench -run CountMin .
 

@@ -38,7 +38,7 @@ var salts = [maxDepth]uint64{
 }
 
 // Sketch is a count-min sketch: Count may overestimate (by more than
-// epsilon*Total with probability around delta), but never underestimates.
+// epsilon*Total with probability at most delta), but never underestimates.
 //
 // Sketch is not safe for concurrent use if any goroutine calls Add.
 type Sketch struct {
@@ -76,18 +76,19 @@ func NewWith(epsilon, delta float64, opts Options) *Sketch {
 	if d > maxDepth {
 		panic("countmin: delta is too small")
 	}
-	if w > math.MaxUint32 {
+	// The counters' size in bytes must fit in an int (matters on 32-bit).
+	if w > math.MaxUint32 || uint64(d)*w > math.MaxInt/4 {
 		panic("countmin: sketch is too large")
 	}
 	// The allocator rounds the allocation up to its size class (or whole
 	// pages for large sizes). Appending to a nil slice reports the rounded
 	// capacity, so widen the rows to use it all: lower error for free.
-	counters := append([]uint32(nil), make([]uint32, d*w)...)
+	counters := append([]uint32(nil), make([]uint32, uint64(d)*w)...)
 	// Index math needs width <= 2^32 (see index), so cap it.
-	w = min(cap(counters)/d, math.MaxUint32)
+	w = min(uint64(cap(counters)/d), math.MaxUint32)
 	return &Sketch{
-		counters: counters[:d*w],
-		width:    uint64(w),
+		counters: counters[:uint64(d)*w],
+		width:    w,
 		salts:    salts[:d],
 		seed:     wyhash.Seed(opts.Seed),
 	}
@@ -147,11 +148,11 @@ func (s *Sketch) index(h uint64, i int) uint64 {
 // Per row, the expected excess of an item's counter is at most N/w <= epsilon*N/e,
 // so by Markov's inequality it exceeds epsilon*N with probability at most 1/e.
 // The estimate exceeds it only if all d rows do: at most e^-d <= delta.
-func params(epsilon, delta float64) (d, w int) {
+func params(epsilon, delta float64) (d int, w uint64) {
 	d = max(int(math.Ceil(math.Log(1/delta))), 1)
 	wf := math.Ceil(math.E / epsilon)
 	if wf > math.MaxUint32 {
 		return d, math.MaxUint32 + 1
 	}
-	return d, int(wf)
+	return d, uint64(wf)
 }
