@@ -1,0 +1,42 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/nalgeon/unsure/bench
+cpu: Apple M1
+BenchmarkCountMinAdd/eps=0.001/impl=boom-8         	59414516	        19.19 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=0.001/impl=boom-8         	62014432	        19.18 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=0.001/impl=boom-8         	62904069	        19.24 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=0.001/impl=boom-8         	62826675	        19.23 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=0.001/impl=boom-8         	62672050	        19.20 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=0.001/impl=boom-8         	62172541	        19.59 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=1e-05/impl=boom-8         	35490700	        33.67 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=1e-05/impl=boom-8         	34980238	        32.19 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=1e-05/impl=boom-8         	34303928	        32.29 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=1e-05/impl=boom-8         	38203429	        34.34 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=1e-05/impl=boom-8         	35121436	        34.55 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=1e-05/impl=boom-8         	33137727	        32.90 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=1e-06/impl=boom-8         	12061664	        98.11 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=1e-06/impl=boom-8         	12086113	        98.01 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=1e-06/impl=boom-8         	12104776	        98.17 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=1e-06/impl=boom-8         	12239121	        98.25 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=1e-06/impl=boom-8         	12113370	        98.74 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinAdd/eps=1e-06/impl=boom-8         	12192818	        98.22 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=0.001/impl=boom-8       	23828829	        50.40 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=0.001/impl=boom-8       	23820492	        50.27 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=0.001/impl=boom-8       	23928751	        50.26 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=0.001/impl=boom-8       	23844000	        50.25 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=0.001/impl=boom-8       	23958291	        50.23 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=0.001/impl=boom-8       	23771986	        50.24 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=1e-05/impl=boom-8       	18754896	        62.98 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=1e-05/impl=boom-8       	19759089	        63.05 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=1e-05/impl=boom-8       	19859438	        62.43 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=1e-05/impl=boom-8       	18192268	        63.69 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=1e-05/impl=boom-8       	18458721	        63.82 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=1e-05/impl=boom-8       	19767267	        62.65 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=1e-06/impl=boom-8       	 9150901	       136.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=1e-06/impl=boom-8       	 9153888	       132.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=1e-06/impl=boom-8       	 9134426	       132.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=1e-06/impl=boom-8       	 9122760	       132.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=1e-06/impl=boom-8       	 9145356	       132.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCountMinCount/eps=1e-06/impl=boom-8       	 9206398	       133.4 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/nalgeon/unsure/bench	45.189s
