@@ -1,4 +1,4 @@
-package bloom
+package wyhash
 
 import "testing"
 
@@ -19,9 +19,9 @@ func TestWyhashVectors(t *testing.T) {
 		{"12345678901234567890123456789012345678901234567890123456789012345678901234567890", 6, 0x6cc5eab49a92d617},
 	}
 	for _, tt := range tests {
-		got := wyhash([]byte(tt.msg), wyseed(tt.seed))
+		got := Hash([]byte(tt.msg), Seed(tt.seed))
 		if got != tt.want {
-			t.Errorf("wyhash(%q, %d) = %#x, want %#x", tt.msg, tt.seed, got, tt.want)
+			t.Errorf("Hash(%q, %d) = %#x, want %#x", tt.msg, tt.seed, got, tt.want)
 		}
 	}
 }
@@ -61,9 +61,9 @@ func TestWyhashLengths(t *testing.T) {
 	for i := range b {
 		b[i] = byte(i*7 + 1)
 	}
-	seed := wyseed(0x123456789abcdef0)
+	seed := Seed(0x123456789abcdef0)
 	for n, w := range want {
-		if got := wyhash(b[:n], seed); got != w {
+		if got := Hash(b[:n], seed); got != w {
 			t.Errorf("len %d: got %#x, want %#x", n, got, w)
 		}
 	}

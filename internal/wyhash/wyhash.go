@@ -1,7 +1,6 @@
-// Port of wyhash final 4.3 by Wang Yi,
+// Package wyhash is a port of wyhash final 4.3 by Wang Yi,
 // Unlicense (github.com/wangyi-fudan/wyhash).
-
-package bloom
+package wyhash
 
 import (
 	"encoding/binary"
@@ -16,19 +15,19 @@ const (
 	wyp3 = 0x4d5a2da51de1aa47
 )
 
-// wyseed premixes a seed for wyhash. It's the part of wyhash that depends
-// only on the seed, split out so a Set can do it once instead of per item.
-func wyseed(seed uint64) uint64 {
+// Seed premixes a seed for Hash. It's the part of wyhash that depends
+// only on the seed, split out so callers can do it once instead of per item.
+func Seed(seed uint64) uint64 {
 	return seed ^ wymix(seed^wyp0, wyp1)
 }
 
-// wyhash returns the 64-bit wyhash of b. seed must come from wyseed:
-// wyhash(b, wyseed(s)) equals upstream wyhash(b, len(b), s, _wyp).
+// Hash returns the 64-bit wyhash of b. seed must come from Seed:
+// Hash(b, Seed(s)) equals upstream wyhash(b, len(b), s, _wyp).
 //
 // A direct port of wyhash final 4.3 (wyhash.h in github.com/wangyi-fudan/wyhash)
 // with its defaults: WYHASH_CONDOM=1, WYHASH_32BIT_MUM=0, little-endian reads.
 // Checked against upstream outputs in wyhash_test.go.
-func wyhash(b []byte, seed uint64) uint64 {
+func Hash(b []byte, seed uint64) uint64 {
 	n := len(b)
 	var x, y uint64
 	if n <= 16 {

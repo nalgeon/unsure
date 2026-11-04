@@ -19,7 +19,11 @@
 // at will. Don't rely on it where false positives are a security concern.
 package bloom
 
-import "math"
+import (
+	"math"
+
+	"github.com/nalgeon/unsure/internal/wyhash"
+)
 
 // block is one cache line: 8 words of 64 bits.
 type block [8]uint64
@@ -45,7 +49,7 @@ var salts = [maxK]uint32{
 type Set struct {
 	blocks []block
 	salts  []uint32 // salts[:k]
-	seed   uint64   // premixed with wyseed
+	seed   uint64   // premixed with wyhash.Seed
 }
 
 // Options configures a Set. The zero value gives the defaults.
@@ -88,13 +92,13 @@ func NewWith(n int, fpProb float64, opts Options) *Set {
 	return &Set{
 		blocks: blocks,
 		salts:  salts[:k],
-		seed:   wyseed(opts.Seed),
+		seed:   wyhash.Seed(opts.Seed),
 	}
 }
 
 // Add adds an item to the set.
 func (s *Set) Add(item []byte) {
-	h := wyhash(item, s.seed)
+	h := wyhash.Hash(item, s.seed)
 	b := &s.blocks[(h>>32)*uint64(len(s.blocks))>>32]
 	x := uint32(h)
 	for _, salt := range s.salts {
@@ -106,7 +110,7 @@ func (s *Set) Add(item []byte) {
 // Contains reports whether the item may be in the set.
 // False means the item is definitely not in the set.
 func (s *Set) Contains(item []byte) bool {
-	h := wyhash(item, s.seed)
+	h := wyhash.Hash(item, s.seed)
 	b := &s.blocks[(h>>32)*uint64(len(s.blocks))>>32]
 	x := uint32(h)
 	m := uint64(1)
