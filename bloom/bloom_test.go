@@ -363,3 +363,14 @@ func TestNewPanics(t *testing.T) {
 		t.Error("New(0, 0.01) has no blocks")
 	}
 }
+
+func TestNoAllocs(t *testing.T) {
+	f := New(1000, 0.01)
+	key := []byte("alice")
+	if n := testing.AllocsPerRun(100, func() { f.Add(key) }); n != 0 {
+		t.Errorf("Add allocates %v times, want 0", n)
+	}
+	if n := testing.AllocsPerRun(100, func() { f.Contains(key) }); n != 0 {
+		t.Errorf("Contains allocates %v times, want 0", n)
+	}
+}

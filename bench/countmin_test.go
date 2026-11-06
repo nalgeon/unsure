@@ -178,7 +178,6 @@ func BenchmarkCountMinAdd(b *testing.B) {
 				for _, k := range makeKeys(3, cmBenchKeys) {
 					s.Add(k, 1)
 				}
-				b.ReportAllocs()
 				i := 0
 				for b.Loop() {
 					s.Add(keys[i], 1)
@@ -203,7 +202,6 @@ func BenchmarkCountMinCount(b *testing.B) {
 				for _, k := range keys {
 					s.Add(k, 1)
 				}
-				b.ReportAllocs()
 				i := 0
 				for b.Loop() {
 					sinkCount = s.Count(keys[i])

@@ -51,7 +51,7 @@ Hashing is deterministic (wyhash with a fixed seed), so the same items always pr
 
 With w = e/ε columns, each counter's error is at most ε×N, with probability at least 1 − 1/e. If you use d = ln(1/δ) rows, the chance that all d of the item's counters exceed its true count by more than ε×N is ≤ δ.
 
-**This implementation uses** a _conservative update_. When you add n to an item, it first finds the current estimate E (the smallest counter), then increases only the counters that are below E+n, leaving the larger ones unchanged. This keeps the same accuracy guarantee, but the actual error is about 2–2.7 times lower, according to the benchmarks. The tradeoff is that counts can't be decreased.
+**This implementation** uses a _conservative update_. When you add n to an item, it first finds the current estimate E (the smallest counter), then increases only the counters that are below E+n, leaving the larger ones unchanged. This keeps the same accuracy guarantee, but the actual error is about 2–2.7 times lower, according to the benchmarks. The tradeoff is that counts can't be decreased.
 
 Counters are 32-bit instead of the usual 64-bit, so the sketch uses 2× less memory. The item is hashed once, and each row gets its own position from that hash by salting it (multiplying by a random per-row constant).
 

@@ -331,3 +331,14 @@ func TestRowsIndependent(t *testing.T) {
 		}
 	}
 }
+
+func TestNoAllocs(t *testing.T) {
+	s := New(0.001, 0.01)
+	key := []byte("alice")
+	if n := testing.AllocsPerRun(100, func() { s.Add(key, 1) }); n != 0 {
+		t.Errorf("Add allocates %v times, want 0", n)
+	}
+	if n := testing.AllocsPerRun(100, func() { s.Count(key) }); n != 0 {
+		t.Errorf("Count allocates %v times, want 0", n)
+	}
+}

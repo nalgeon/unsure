@@ -129,7 +129,6 @@ func BenchmarkBloomNew(b *testing.B) {
 	for _, n := range bloomNewSizes {
 		for _, im := range bloomImpls {
 			b.Run(fmt.Sprintf("n=%d/impl=%s", n, im.name), func(b *testing.B) {
-				b.ReportAllocs()
 				for b.Loop() {
 					sinkFilter = im.new(n, bloomBenchP)
 				}
@@ -148,7 +147,6 @@ func BenchmarkBloomAdd(b *testing.B) {
 				// doesn't pay for page faults on first write. Add's cost
 				// doesn't depend on how full the filter is.
 				fillBloom(f, 3, n/16)
-				b.ReportAllocs()
 				i := 0
 				for b.Loop() {
 					f.Add(keys[i])
@@ -170,7 +168,6 @@ func BenchmarkBloomContainsHit(b *testing.B) {
 			b.Run(fmt.Sprintf("n=%d/impl=%s", n, im.name), func(b *testing.B) {
 				f := im.new(n, bloomBenchP)
 				fillBloom(f, 1, n)
-				b.ReportAllocs()
 				i := 0
 				for b.Loop() {
 					sink = f.Contains(keys[i])
@@ -191,7 +188,6 @@ func BenchmarkBloomContainsMiss(b *testing.B) {
 			b.Run(fmt.Sprintf("n=%d/impl=%s", n, im.name), func(b *testing.B) {
 				f := im.new(n, bloomBenchP)
 				fillBloom(f, 1, n)
-				b.ReportAllocs()
 				i := 0
 				for b.Loop() {
 					sink = f.Contains(others[i])
