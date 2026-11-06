@@ -1,6 +1,7 @@
 package bench
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math/rand/v2"
 	"slices"
@@ -120,6 +121,37 @@ func TestCountMinAccuracy(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TestCountMinVsMap compares the memory used by a Sketch and a map of counts
+// over 1M distinct 8-byte strings (the example from the countmin README).
+func TestCountMinVsMap(t *testing.T) {
+	const n = 1_000_000
+	const eps, delta = 1e-4, 0.01
+	_, mapBytes := retained(func() map[string]uint32 {
+		counts := make(map[string]uint32)
+		var buf [8]byte
+		for i := range n {
+			binary.LittleEndian.PutUint64(buf[:], uint64(i))
+			counts[string(buf[:])]++
+		}
+		return counts
+	})
+	_, sketchBytes := retained(func() *countmin.Sketch {
+		sketch := countmin.New(eps, delta)
+		var buf [8]byte
+		for i := range n {
+			binary.LittleEndian.PutUint64(buf[:], uint64(i))
+			sketch.Add(buf[:], 1)
+		}
+		return sketch
+	})
+	mb := func(bytes int) float64 { return float64(bytes) / 1e6 }
+	t.Logf("n=%d strings of 8 bytes: map=%.2f MB, sketch eps=%g delta=%g: %.2f MB, %.0fx smaller",
+		n, mb(mapBytes), eps, delta, mb(sketchBytes), float64(mapBytes)/float64(sketchBytes))
+	if sketchBytes*20 > mapBytes {
+		t.Errorf("sketch is only %.1fx smaller than map, want at least 20x", float64(mapBytes)/float64(sketchBytes))
 	}
 }
 
