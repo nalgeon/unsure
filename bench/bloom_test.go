@@ -64,6 +64,38 @@ func TestBloomSize(t *testing.T) {
 	}
 }
 
+// TestBloomVsMap compares the memory used by a Filter and a map-based set
+// holding 100K 8-byte strings (the example from the bloom README).
+func TestBloomVsMap(t *testing.T) {
+	const n = 100_000
+	const p = 0.01
+	_, setBytes := retained(func() map[string]struct{} {
+		set := make(map[string]struct{})
+		var buf [8]byte
+		for i := range n {
+			binary.LittleEndian.PutUint64(buf[:], uint64(i))
+			set[string(buf[:])] = struct{}{}
+		}
+		return set
+	})
+	_, filterBytes := retained(func() *bloom.Filter {
+		filter := bloom.New(n, p)
+		var buf [8]byte
+		for i := range n {
+			binary.LittleEndian.PutUint64(buf[:], uint64(i))
+			filter.Add(buf[:])
+		}
+		return filter
+	})
+	mb := func(bytes int) float64 { return float64(bytes) / 1e6 }
+	bpi := func(bytes int) float64 { return float64(bytes*8) / n }
+	t.Logf("n=%d strings of 8 bytes: map=%.2f MB (%.0f bits/item), filter p=%g: %.2f MB (%.1f bits/item), %.0fx smaller",
+		n, mb(setBytes), bpi(setBytes), p, mb(filterBytes), bpi(filterBytes), float64(setBytes)/float64(filterBytes))
+	if filterBytes*20 > setBytes {
+		t.Errorf("filter is only %.1fx smaller than map, want at least 20x", float64(setBytes)/float64(filterBytes))
+	}
+}
+
 // Benchmarks
 
 // bloomBenchSizes are chosen so the filter (about 1.2 bytes per item at 1%)

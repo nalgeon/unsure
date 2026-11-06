@@ -38,3 +38,20 @@ func allocated[T any](fn func() T) (T, int) {
 	}
 	return v, bytes
 }
+
+// retained returns the number of heap bytes still in use by the value fn returns,
+// after garbage collection. Unlike allocated, it doesn't count temporary
+// allocations, such as the old tables a map discards when it grows.
+func retained[T any](fn func() T) (T, int) {
+	heap := func() uint64 {
+		runtime.GC()
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		return m.HeapAlloc
+	}
+	before := heap()
+	v := fn()
+	after := heap()
+	runtime.KeepAlive(v)
+	return v, int(after) - int(before)
+}
