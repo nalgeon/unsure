@@ -7,15 +7,15 @@ import (
 )
 
 func Example() {
-	// A set for 1000 items with a 1% false positive rate.
-	set := bloom.New(1000, 0.01)
+	// A filter for 1000 items with a 1% false positive rate.
+	filter := bloom.New(1000, 0.01)
 
-	set.Add([]byte("alice"))
-	set.Add([]byte("bob"))
+	filter.Add([]byte("alice"))
+	filter.Add([]byte("bob"))
 
-	fmt.Println(set.Contains([]byte("alice")))
-	fmt.Println(set.Contains([]byte("bob")))
-	fmt.Println(set.Contains([]byte("carol")))
+	fmt.Println(filter.Contains([]byte("alice")))
+	fmt.Println(filter.Contains([]byte("bob")))
+	fmt.Println(filter.Contains([]byte("carol")))
 	// Output:
 	// true
 	// true
@@ -23,19 +23,19 @@ func Example() {
 }
 
 func ExampleNewWith() {
-	// Sets with the same seed hash items the same way.
+	// Filters with the same seed hash items the same way.
 	opts := bloom.Options{Seed: 42}
-	set := bloom.NewWith(1000, 0.01, opts)
+	filter := bloom.NewWith(1000, 0.01, opts)
 
-	set.Add([]byte("alice"))
-	fmt.Println(set.Contains([]byte("alice")))
+	filter.Add([]byte("alice"))
+	fmt.Println(filter.Contains([]byte("alice")))
 	// Output:
 	// true
 }
 
-func ExampleSet_Size() {
-	set := bloom.New(1_000_000, 0.01)
-	fmt.Printf("%.1f bits per item\n", float64(set.Size()*8)/1_000_000)
+func ExampleFilter_Size() {
+	filter := bloom.New(1_000_000, 0.01)
+	fmt.Printf("%.1f bits per item\n", float64(filter.Size()*8)/1_000_000)
 	// Output:
 	// 9.9 bits per item
 }

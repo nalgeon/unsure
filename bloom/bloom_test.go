@@ -24,10 +24,10 @@ func makeKeys(seed uint64, n int) [][]byte {
 }
 
 func TestEmpty(t *testing.T) {
-	s := New(1000, 0.01)
+	f := New(1000, 0.01)
 	for _, k := range makeKeys(1, 1000) {
-		if s.Contains(k) {
-			t.Fatalf("empty set reports %x as present", k)
+		if f.Contains(k) {
+			t.Fatalf("empty filter reports %x as present", k)
 		}
 	}
 }
@@ -35,13 +35,13 @@ func TestEmpty(t *testing.T) {
 func TestNoFalseNegatives(t *testing.T) {
 	for _, n := range []int{1, 10, 1000, 100_000} {
 		t.Run(fmt.Sprintf("n=%d", n), func(t *testing.T) {
-			s := New(n, 0.01)
+			f := New(n, 0.01)
 			keys := makeKeys(1, n)
 			for _, k := range keys {
-				s.Add(k)
+				f.Add(k)
 			}
 			for _, k := range keys {
-				if !s.Contains(k) {
+				if !f.Contains(k) {
 					t.Fatalf("added key %x not found", k)
 				}
 			}
@@ -59,12 +59,12 @@ func TestEdgeKeys(t *testing.T) {
 		[]byte("hello, world"),
 		make([]byte, 1<<16),
 	}
-	s := New(len(keys), 0.01)
+	f := New(len(keys), 0.01)
 	for _, k := range keys {
-		s.Add(k)
+		f.Add(k)
 	}
 	for _, k := range keys {
-		if !s.Contains(k) {
+		if !f.Contains(k) {
 			t.Fatalf("added key (len=%d) not found", len(k))
 		}
 	}
@@ -80,13 +80,13 @@ func TestFalsePositiveRate(t *testing.T) {
 
 	for _, p := range []float64{0.1, 0.01, 0.001} {
 		t.Run(fmt.Sprintf("p=%g", p), func(t *testing.T) {
-			s := New(n, p)
+			f := New(n, p)
 			for _, k := range members {
-				s.Add(k)
+				f.Add(k)
 			}
 			fp := 0
 			for _, k := range others {
-				if s.Contains(k) {
+				if f.Contains(k) {
 					fp++
 				}
 			}
@@ -110,11 +110,11 @@ func TestFalsePositiveRateLarge(t *testing.T) {
 	const n = 50_000_000
 	const probes = 1_000_000
 	const p = 0.01
-	s := New(n, p)
-	fill(s, 1, n)
+	f := New(n, p)
+	fill(f, 1, n)
 	fp := 0
 	for _, k := range makeKeys(2, probes) {
-		if s.Contains(k) {
+		if f.Contains(k) {
 			fp++
 		}
 	}
@@ -137,11 +137,11 @@ func TestFalsePositiveRateSmall(t *testing.T) {
 				// filter's rate depends heavily on where its few items landed.
 				const filters = 100
 				fp := 0
-				for f := range filters {
-					s := New(n, p)
-					fill(s, uint64(100+f), n)
+				for i := range filters {
+					f := New(n, p)
+					fill(f, uint64(100+i), n)
 					for _, k := range others[:probes/filters] {
-						if s.Contains(k) {
+						if f.Contains(k) {
 							fp++
 						}
 					}
@@ -163,21 +163,21 @@ func TestFalsePositiveRateLow(t *testing.T) {
 	const n = 10_000
 	const p = 1e-5
 	const probes = 10_000_000 // ~100 expected false positives
-	s := New(n, p)
-	if k := len(s.salts); k != 14 {
+	f := New(n, p)
+	if k := len(f.salts); k != 14 {
 		t.Fatalf("k = %d, want 14", k)
 	}
 	// Drop the allocator's extra blocks, which would lower the rate
 	// well below the target at this small size and hide problems.
 	_, load := params(p)
-	s.blocks = s.blocks[:int(math.Ceil(n/load))]
-	fill(s, 1, n)
+	f.blocks = f.blocks[:int(math.Ceil(n/load))]
+	fill(f, 1, n)
 	key := make([]byte, 16)
 	binary.LittleEndian.PutUint64(key[:8], 2)
 	fp := 0
 	for i := range probes {
 		binary.LittleEndian.PutUint64(key[8:], uint64(i))
-		if s.Contains(key) {
+		if f.Contains(key) {
 			fp++
 		}
 	}
@@ -206,13 +206,13 @@ func allocated[T any](fn func() T) (T, int) {
 
 // TestSize checks the memory actually allocated by New: no less than the
 // information-theoretic minimum of n*log2(1/p) bits (which no approximate
-// membership structure can beat). It also checks that Set.Size reports
+// membership structure can beat). It also checks that Filter.Size reports
 // the allocated memory accurately.
 func TestSize(t *testing.T) {
 	for _, n := range []int{1000, 100_000, 10_000_000} {
 		for _, p := range []float64{0.1, 0.01, 0.001} {
 			t.Run(fmt.Sprintf("n=%d/p=%g", n, p), func(t *testing.T) {
-				s, got := allocated(func() *Set { return New(n, p) })
+				f, got := allocated(func() *Filter { return New(n, p) })
 				minBytes := int(float64(n) * math.Log2(1/p) / 8)
 				if got < minBytes {
 					t.Errorf("allocated %d bytes, below the theoretical minimum %d; measurement is likely wrong", got, minBytes)
@@ -220,7 +220,7 @@ func TestSize(t *testing.T) {
 				// Size leaves out the struct and allocator rounding:
 				// up to 1/8 for small objects (size classes),
 				// up to one 8KB page for large ones (>32KB).
-				size := s.Size()
+				size := f.Size()
 				slack := 256 + size/8
 				if size > 32<<10 {
 					slack = 256 + 8<<10
@@ -233,22 +233,22 @@ func TestSize(t *testing.T) {
 	}
 }
 
-// fill adds n keys (the same ones makeKeys(seed, n) would return) to s,
+// fill adds n keys (the same ones makeKeys(seed, n) would return) to f,
 // without materializing them all in memory.
-func fill(s *Set, seed uint64, n int) {
+func fill(f *Filter, seed uint64, n int) {
 	k := make([]byte, 16)
 	binary.LittleEndian.PutUint64(k[:8], seed)
 	for i := range n {
 		binary.LittleEndian.PutUint64(k[8:], uint64(i))
-		s.Add(k)
+		f.Add(k)
 	}
 }
 
 func TestSeed(t *testing.T) {
 	const n = 1000
-	build := func(s *Set) *Set {
-		fill(s, 1, n)
-		return s
+	build := func(f *Filter) *Filter {
+		fill(f, 1, n)
+		return f
 	}
 	a := build(New(n, 0.01))
 	b := build(New(n, 0.01))
@@ -256,13 +256,13 @@ func TestSeed(t *testing.T) {
 	other := build(NewWith(n, 0.01, Options{Seed: 1}))
 
 	if !slices.Equal(a.blocks, b.blocks) {
-		t.Error("two sets with the same items and options differ")
+		t.Error("two filters with the same items and options differ")
 	}
 	if !slices.Equal(a.blocks, zero.blocks) {
 		t.Error("New differs from NewWith with Seed: 0")
 	}
 	if slices.Equal(a.blocks, other.blocks) {
-		t.Error("Seed: 1 gives the same set as the default seed")
+		t.Error("Seed: 1 gives the same filter as the default seed")
 	}
 	for _, k := range makeKeys(1, n) {
 		if !other.Contains(k) {
@@ -341,7 +341,7 @@ func TestNewPanics(t *testing.T) {
 		{"p>1", 1000, 1.5, "fpProb must be in (0, 1)"},
 		{"p=NaN", 1000, math.NaN(), "fpProb must be in (0, 1)"},
 		{"tiny p", 1000, 1e-300, "fpProb is too small"},
-		{"huge n", math.MaxInt, 0.01, "set is too large"},
+		{"huge n", math.MaxInt, 0.01, "filter is too large"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -358,8 +358,8 @@ func TestNewPanics(t *testing.T) {
 		})
 	}
 
-	// n=0 is valid: the smallest possible set.
-	if s := New(0, 0.01); s.Size() == 0 {
+	// n=0 is valid: the smallest possible filter.
+	if f := New(0, 0.01); f.Size() == 0 {
 		t.Error("New(0, 0.01) has no blocks")
 	}
 }

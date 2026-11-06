@@ -21,11 +21,11 @@
 // still works, but the false positive rate grows quickly: with fpProb = 0.01,
 // it's ~5% at 1.5n and ~12% at 2n. To choose fpProb, weigh the cost of a
 // false positive (usually an unneeded lookup) against memory: each 10× lower
-// rate costs about 5–6 more bits per item. The set takes about 4.8 bits per
+// rate costs about 5–6 more bits per item. The filter takes about 4.8 bits per
 // item at fpProb = 0.1, 9.9 bits at 0.01, and 15.5 bits at 0.001.
 //
 // Hashing is deterministic: wyhash final 4.3 with a fixed seed (0 unless set
-// in [Options]), so the same items always produce the same set. The filter
+// in [Options]), so the same items always produce the same filter. The filter
 // is not designed for adversarially chosen items: anyone who knows the seed
 // (or crafts keys that cancel it out) can produce false positives at will.
 package bloom
@@ -52,33 +52,33 @@ var salts = [maxK]uint32{
 	0xa6a3a451, 0x0c5c7fd1, 0x128b2f33, 0xd23f0825,
 }
 
-// Set is a probabilistic set: Contains may report false positives
+// Filter is a probabilistic set: Contains may report false positives
 // (with probability around fpProb once n items are added),
 // but never false negatives.
 //
-// Set is not safe for concurrent use if any goroutine calls Add.
-type Set struct {
+// Filter is not safe for concurrent use if any goroutine calls Add.
+type Filter struct {
 	blocks []block
 	salts  []uint32 // salts[:k]
 	seed   uint64   // premixed with wyhash.Seed
 }
 
-// Options configures a Set. The zero value gives the defaults.
+// Options configures a Filter. The zero value gives the defaults.
 type Options struct {
 	// Seed for the hash function. Default 0.
-	// Sets must have the same seed to be merged or compared.
+	// Filters must have the same seed to be merged or compared.
 	Seed uint64
 }
 
-// New creates a set for n items with the target false positive
+// New creates a filter for n items with the target false positive
 // probability fpProb, using the default options.
 // Panics if n is negative or fpProb is not in (0, 1).
-func New(n int, fpProb float64) *Set {
+func New(n int, fpProb float64) *Filter {
 	return NewWith(n, fpProb, Options{})
 }
 
 // NewWith is like [New], but with the given options.
-func NewWith(n int, fpProb float64, opts Options) *Set {
+func NewWith(n int, fpProb float64, opts Options) *Filter {
 	if n < 0 {
 		panic("bloom: n must not be negative")
 	}
@@ -92,7 +92,7 @@ func NewWith(n int, fpProb float64, opts Options) *Set {
 	}
 	nblocks := uint64(math.Ceil(float64(n) / load))
 	if nblocks > math.MaxUint32 {
-		panic("bloom: set is too large")
+		panic("bloom: filter is too large")
 	}
 	// The allocator rounds the allocation up to its size class (or whole
 	// pages for large sizes). Appending to a nil slice reports the rounded
@@ -100,41 +100,41 @@ func NewWith(n int, fpProb float64, opts Options) *Set {
 	blocks := append([]block(nil), make([]block, nblocks)...)
 	// Block index math needs nblocks <= 2^32 (see Add), so cap it.
 	blocks = blocks[:min(uint64(cap(blocks)), math.MaxUint32)]
-	return &Set{
+	return &Filter{
 		blocks: blocks,
 		salts:  salts[:k],
 		seed:   wyhash.Seed(opts.Seed),
 	}
 }
 
-// Add adds an item to the set.
-func (s *Set) Add(item []byte) {
-	h := wyhash.Hash(item, s.seed)
-	b := &s.blocks[(h>>32)*uint64(len(s.blocks))>>32]
+// Add adds an item to the filter.
+func (f *Filter) Add(item []byte) {
+	h := wyhash.Hash(item, f.seed)
+	b := &f.blocks[(h>>32)*uint64(len(f.blocks))>>32]
 	x := uint32(h)
-	for _, salt := range s.salts {
+	for _, salt := range f.salts {
 		pos := (x * salt) >> 23 // 9 bits: 0..511
 		b[pos>>6] |= 1 << (pos & 63)
 	}
 }
 
-// Contains reports whether the item may be in the set.
-// False means the item is definitely not in the set.
-func (s *Set) Contains(item []byte) bool {
-	h := wyhash.Hash(item, s.seed)
-	b := &s.blocks[(h>>32)*uint64(len(s.blocks))>>32]
+// Contains reports whether the item may be in the filter.
+// False means the item is definitely not in the filter.
+func (f *Filter) Contains(item []byte) bool {
+	h := wyhash.Hash(item, f.seed)
+	b := &f.blocks[(h>>32)*uint64(len(f.blocks))>>32]
 	x := uint32(h)
 	m := uint64(1)
-	for _, salt := range s.salts {
+	for _, salt := range f.salts {
 		pos := (x * salt) >> 23
 		m &= b[pos>>6] >> (pos & 63)
 	}
 	return m != 0
 }
 
-// Size returns the memory used by the set's data, in bytes.
-func (s *Set) Size() int {
-	return len(s.blocks) * 64
+// Size returns the memory used by the filter's data, in bytes.
+func (f *Filter) Size() int {
+	return len(f.blocks) * 64
 }
 
 // params returns the number of bits per item k and the max average

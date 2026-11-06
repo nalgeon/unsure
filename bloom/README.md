@@ -19,19 +19,19 @@ go get github.com/nalgeon/unsure
 ```go
 import "github.com/nalgeon/unsure/bloom"
 
-// A set for 1000 items with a 1% false positive rate.
-set := bloom.New(1000, 0.01)
+// A filter for 1000 items with a 1% false positive rate.
+filter := bloom.New(1000, 0.01)
 
-set.Add([]byte("alice"))
-set.Add([]byte("bob"))
+filter.Add([]byte("alice"))
+filter.Add([]byte("bob"))
 
-set.Contains([]byte("alice")) // true
-set.Contains([]byte("carol")) // false (or, rarely, true)
+filter.Contains([]byte("alice")) // true
+filter.Contains([]byte("carol")) // false (or, rarely, true)
 ```
 
-The set is sized for the given number of items with a given false positive rate. You can add more, but the false positive rate will go up.
+The filter is sized for the given number of items with a given false positive rate. You can add more, but the false positive rate will go up.
 
-Hashing is deterministic (wyhash with a fixed seed), so the same items always produce the same set. The filter is not designed for adversarial input: don't rely on it if an attacker could benefit from false positives.
+Hashing is deterministic (wyhash with a fixed seed), so the same items always produce the same filter. The filter is not designed for adversarial input: don't rely on it if an attacker could benefit from false positives.
 
 ## How it works
 

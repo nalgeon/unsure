@@ -4,13 +4,13 @@ CM_REF := testdata/countmin-reference.txt
 .PHONY: bloom-test bloom-bench bloom-bench-ref bloom-bench-full bloom-size
 .PHONY: countmin-test countmin-bench countmin-bench-ref countmin-bench-full countmin-accuracy
 
-# Run the tests: our Set, then the size comparison against other libraries.
+# Run the tests: our Filter, then the size comparison against other libraries.
 bloom-test:
 	@GOOS=linux GOARCH=386 go vet ./bloom
 	@go test ./bloom
 	@go test -C bench -run Bloom .
 
-# Fast benchmark (median of 3 runs) of our Set, compared against the recorded reference results.
+# Fast benchmark (median of 3 runs) of our Filter, compared against the recorded reference results.
 bloom-bench:
 	@go test -C bench -run x -bench 'Bloom(Add|Contains).*//impl=unsure' -benchtime 1000000x -count 3 . | benchstat -col /impl bench/$(BLOOM_REF) -
 
@@ -22,7 +22,7 @@ bloom-bench-ref:
 bloom-bench-full:
 	@go test -C bench -run x -bench 'Bloom(Add|Contains)' -count 10 . | benchstat -col /impl -
 
-# Memory use (bits/item) of our Set vs the other libraries.
+# Memory use (bits/item) of our Filter vs the other libraries.
 bloom-size:
 	@go test -C bench -v -run '^TestBloomSize$$' . | grep 'bits/item' | sed 's/^.*: n=/n=/'
 
