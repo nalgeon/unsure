@@ -33,9 +33,9 @@ Design: Merge compares 8 registers per uint64. Registers are < 128, so `^((x|0x8
 
 Merge same / disjoint, ns/op at p = 10 / 14 / 18 (Add, Count, RMSE, size unchanged):
 
-| Merge same         | Merge disjoint      |
-| ------------------ | ------------------- |
-| 125 / 1.9k / 30.1k | 730 / 20.1k / 341k  |
+| Merge same         | Merge disjoint     |
+| ------------------ | ------------------ |
+| 125 / 1.9k / 30.1k | 730 / 20.1k / 341k |
 
 vs old Merge: same 3.1× faster at all p; disjoint 1.2× / 3.1× / 3.0× (old: 0.90k / 62k / 1.03M). vs axiom: same −76%, disjoint −57% / −66% / −64% (axiom 1.71k / 58.6k / 951k; old Merge was +6% / +8% slower than axiom at p=14/18 in this case). At p=10 the histogram updates take about half of the disjoint time (350 ns without them): updates to the same few bins form a dependency chain.
 
@@ -46,3 +46,15 @@ Measured with 10k trials (random hashes): below p=8 the docs' "RMSE at most stdE
 Design: minP = 8 instead of tuning an n-dependent correction. Registers below p=8 saved at most 240 bytes next to the fixed 256-byte histogram, and precision() already clamps, so New(stdErr > 0.065) just gets p=8 (256 B). Correction kept (halves the bias at p=8). TestAccuracy now runs p=8/10/14. Add/Count/Merge, RMSE and size at p=14 unchanged.
 
 Point 3 of the same review: Size() now counts the 256-byte histogram (2^p + 256; it's half the sketch at p=8). TestAccuracy adds p=18 (n up to 1M ≈ 4m). Re-measured the small-n rounding bias from entry 1 (20k trials): worst −2.9% at n=16 for p=8, −1.5% at n=32 for p=10, −0.4% at n=128 for p=14, always under 0.5 in absolute terms. The α correction's part of it is −0.24% at p=8 and ≈0 at p ≥ 14, so it's almost all integer rounding.
+
+## 4. New() and NewPrecision(p), seed removed
+
+API review across bloom/countmin/hll. `New(stdErr)` → `New()` (p=14, the default in Redis and axiomhq) plus `NewPrecision(p)`, p in [8, 18]. Precision only comes in a few values (`New(0.01)` gave 0.81%, `New(0.005)` 0.41% at 4× the memory), so a stdErr parameter suggested a continuous dial that doesn't exist. Merging needs equal p, which is now explicit. The package docs have a p → stdErr/size table. `precision()` removed.
+
+Seed removed like in bloom/countmin: no `Options`/`NewWith`/`ErrSeedMismatch`, always seed 0 premixed as `wyhash.Seed0`. Merge only checks p.
+
+| Add             | Count        | Merge same         | Merge disjoint     |
+| --------------- | ------------ | ------------------ | ------------------ |
+| 6.8 / 5.6 / 8.3 | 69 / 62 / 57 | 124 / 1.9k / 29.8k | 718 / 19.6k / 335k |
+
+Single `make hll-bench` run, same as entries 2–3 within noise. RMSE and size unchanged (same hashing).

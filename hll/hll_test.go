@@ -7,8 +7,6 @@ import (
 	"math/rand/v2"
 	"slices"
 	"testing"
-
-	"github.com/nalgeon/unsure/internal/wyhash"
 )
 
 // makeKeys returns n distinct 16-byte keys. Keys from different seeds don't overlap.
@@ -33,66 +31,36 @@ func histogram(s *Sketch) [64]uint32 {
 	return h
 }
 
-func TestPrecision(t *testing.T) {
-	tests := []struct {
-		stdErr float64
-		p      int
-	}{
-		{0.9, 8},
-		{0.26, 8},
-		{1.04 / 16, 8},
-		{0.0649, 9},
-		{1.04 / 32, 10},
-		{0.0325, 10},
-		{0.0324, 11},
-		{0.01, 14},
-		{1.04 / 128, 14},
-		{0.0081, 15},
-		{1.04 / 512, 18},
-		{0.002, 19},
+func TestNew(t *testing.T) {
+	s := New()
+	if s.p != defaultP || len(s.regs) != 1<<defaultP {
+		t.Errorf("New: p = %d, %d registers, want p = %d", s.p, len(s.regs), defaultP)
 	}
-	for _, tt := range tests {
-		if p := precision(tt.stdErr); p != tt.p {
-			t.Errorf("precision(%g) = %d, want %d", tt.stdErr, p, tt.p)
-		}
-		if tt.p > maxP {
-			continue
-		}
-		s := New(tt.stdErr)
-		if int(s.p) != tt.p || len(s.regs) != 1<<tt.p || s.Size() != 1<<tt.p+256 {
-			t.Errorf("New(%g): p = %d, %d registers, size %d, want p = %d",
-				tt.stdErr, s.p, len(s.regs), s.Size(), tt.p)
+	for p := minP; p <= maxP; p++ {
+		s := NewPrecision(p)
+		if int(s.p) != p || len(s.regs) != 1<<p || s.Size() != 1<<p+256 || s.hist[0] != 1<<p {
+			t.Errorf("NewPrecision(%d): p = %d, %d registers, size %d, hist[0] = %d",
+				p, s.p, len(s.regs), s.Size(), s.hist[0])
 		}
 	}
 }
 
-func TestNewPanics(t *testing.T) {
-	tests := []struct {
-		name   string
-		stdErr float64
-	}{
-		{"0", 0},
-		{"1", 1},
-		{"negative", -0.01},
-		{"NaN", math.NaN()},
-		{"+Inf", math.Inf(1)},
-		{"too small", 0.002},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+func TestNewPrecisionPanics(t *testing.T) {
+	for _, p := range []int{-1, 0, minP - 1, maxP + 1, 64} {
+		t.Run(fmt.Sprint(p), func(t *testing.T) {
 			defer func() {
 				if recover() == nil {
-					t.Errorf("New(%g) didn't panic", tt.stdErr)
+					t.Errorf("NewPrecision(%d) didn't panic", p)
 				}
 			}()
-			New(tt.stdErr)
+			NewPrecision(p)
 		})
 	}
 }
 
 func TestEmpty(t *testing.T) {
 	for p := minP; p <= maxP; p++ {
-		s := New(1.04 / math.Sqrt(float64(int(1)<<p)))
+		s := NewPrecision(p)
 		if c := s.Count(); c != 0 {
 			t.Errorf("p=%d: empty Count = %d", p, c)
 		}
@@ -102,7 +70,7 @@ func TestEmpty(t *testing.T) {
 func TestSmall(t *testing.T) {
 	// With 16K registers, the first ~100 items almost never collide,
 	// so the estimate should be exact or off by one.
-	s := New(0.01)
+	s := New()
 	for i, k := range makeKeys(1, 100) {
 		s.Add(k)
 		n := uint64(i + 1)
@@ -114,7 +82,7 @@ func TestSmall(t *testing.T) {
 
 func TestDuplicates(t *testing.T) {
 	keys := makeKeys(1, 10_000)
-	s := New(0.01)
+	s := New()
 	for _, k := range keys {
 		s.Add(k)
 	}
@@ -139,7 +107,7 @@ func TestEdgeKeys(t *testing.T) {
 		[]byte("hello, world"),
 		make([]byte, 1<<16),
 	}
-	s := New(0.01)
+	s := New()
 	for _, k := range keys {
 		s.Add(k)
 	}
@@ -155,7 +123,7 @@ func TestEdgeKeys(t *testing.T) {
 
 func TestRank(t *testing.T) {
 	const p = 14
-	s := New(1.04 / 128)
+	s := NewPrecision(p)
 	tests := []struct {
 		h    uint64
 		i    int
@@ -178,7 +146,7 @@ func TestRank(t *testing.T) {
 }
 
 func TestSaturated(t *testing.T) {
-	s := New(0.9) // p=minP
+	s := NewPrecision(minP)
 	for range 1000 {
 		s.addHash(0) // max rank 65-p into register 0
 	}
@@ -192,7 +160,7 @@ func TestSaturated(t *testing.T) {
 
 func TestHistogram(t *testing.T) {
 	r := rand.New(rand.NewPCG(1, 2))
-	a, b := New(0.05), New(0.05)
+	a, b := NewPrecision(9), NewPrecision(9)
 	for range 5000 {
 		a.addHash(r.Uint64())
 	}
@@ -213,7 +181,7 @@ func TestHistogram(t *testing.T) {
 func TestMerge(t *testing.T) {
 	keysA := makeKeys(1, 30_000)
 	keysB := makeKeys(2, 50_000)
-	a, b, all := New(0.01), New(0.01), New(0.01)
+	a, b, all := New(), New(), New()
 	for _, k := range keysA {
 		a.Add(k)
 		all.Add(k)
@@ -248,8 +216,6 @@ func TestMerge(t *testing.T) {
 func TestMergeRegisters(t *testing.T) {
 	r := rand.New(rand.NewPCG(3, 4))
 	for _, p := range []int{minP, 10, maxP} {
-		m := 1 << p
-		stdErr := 1.04 / math.Sqrt(float64(m))
 		maxR := 65 - p
 		// fill sets registers to random values, keeping the histogram
 		// consistent. Each source picks a value for register i.
@@ -280,7 +246,7 @@ func TestMergeRegisters(t *testing.T) {
 			{"alternating", func(i int) uint8 { return uint8(i % 2 * maxR) }, func(i int) uint8 { return uint8((i + 1) % 2 * maxR) }},
 		}
 		for _, c := range cases {
-			a, b := New(stdErr), New(stdErr)
+			a, b := NewPrecision(p), NewPrecision(p)
 			fill(a, c.a)
 			fill(b, c.b)
 			want := slices.Clone(a.regs)
@@ -310,33 +276,9 @@ func TestMergeRegisters(t *testing.T) {
 }
 
 func TestMergeMismatch(t *testing.T) {
-	a := New(0.01)
-	if err := a.Merge(New(0.02)); err != ErrPrecisionMismatch {
+	a := New()
+	if err := a.Merge(NewPrecision(defaultP + 1)); err != ErrPrecisionMismatch {
 		t.Errorf("different precisions: want ErrPrecisionMismatch, got %v", err)
-	}
-	if err := a.Merge(NewWith(0.01, Options{Seed: 1})); err != ErrSeedMismatch {
-		t.Errorf("different seeds: want ErrSeedMismatch, got %v", err)
-	}
-}
-
-func TestSeed(t *testing.T) {
-	keys := makeKeys(1, 1000)
-	a := NewWith(0.01, Options{Seed: 1})
-	b := NewWith(0.01, Options{Seed: 1})
-	c := NewWith(0.01, Options{Seed: 2})
-	for _, k := range keys {
-		a.Add(k)
-		b.Add(k)
-		c.Add(k)
-	}
-	if !slices.Equal(a.regs, b.regs) {
-		t.Errorf("same seed, different registers")
-	}
-	if slices.Equal(a.regs, c.regs) {
-		t.Errorf("different seeds, same registers")
-	}
-	if d := New(0.01); d.seed != wyhash.Seed(0) {
-		t.Errorf("default seed = %#x, want wyhash.Seed(0)", d.seed)
 	}
 }
 
@@ -345,10 +287,7 @@ func TestSeed(t *testing.T) {
 // the number of registers (including the 2.5m–5m range where the original
 // HyperLogLog switches estimators). Random hashes stand in for items.
 func TestAccuracy(t *testing.T) {
-	trials := 200
-	if testing.Short() {
-		trials = 50
-	}
+	const trials = 200
 	for _, p := range []int{minP, 10, 14, maxP} {
 		m := 1 << p
 		stdErr := 1.04 / math.Sqrt(float64(m))
@@ -360,7 +299,7 @@ func TestAccuracy(t *testing.T) {
 		sum2 := make([]float64, len(points)) // Σ relative error²
 		for trial := range trials {
 			r := rand.New(rand.NewPCG(uint64(p), uint64(trial)))
-			s := New(stdErr)
+			s := NewPrecision(p)
 			n := 0
 			for j, pt := range points {
 				for ; n < pt; n++ {
@@ -398,8 +337,9 @@ func TestAccuracy(t *testing.T) {
 func TestAccuracyKeys(t *testing.T) {
 	const n = 1_000_000
 	keys := makeKeys(1, n)
-	for _, stdErr := range []float64{0.0325, 0.0082, 0.0021} {
-		s := New(stdErr)
+	for _, p := range []int{10, 14, 18} {
+		stdErr := 1.04 / math.Sqrt(float64(int(1)<<p))
+		s := NewPrecision(p)
 		for _, k := range keys {
 			s.Add(k)
 		}
@@ -413,8 +353,8 @@ func TestAccuracyKeys(t *testing.T) {
 }
 
 func TestNoAllocs(t *testing.T) {
-	s := New(0.01)
-	other := New(0.01)
+	s := New()
+	other := New()
 	key := []byte("alice")
 	if n := testing.AllocsPerRun(100, func() { s.Add(key) }); n != 0 {
 		t.Errorf("Add allocates %v times, want 0", n)

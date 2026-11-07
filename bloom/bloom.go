@@ -24,10 +24,10 @@
 // rate costs about 5–6 more bits per item. The filter takes about 4.8 bits per
 // item at fpProb = 0.1, 9.9 bits at 0.01, and 15.5 bits at 0.001.
 //
-// Hashing is deterministic: wyhash final 4.3 with a fixed seed (0 unless set
-// in [Options]), so the same items always produce the same filter. The filter
-// is not designed for adversarially chosen items: anyone who knows the seed
-// (or crafts keys that cancel it out) can produce false positives at will.
+// Hashing is deterministic: wyhash final 4.3 with seed 0, so the same items
+// always produce the same filter. The filter is not designed for adversarially
+// chosen items: anyone who knows the seed (or crafts keys that cancel it out)
+// can produce false positives at will.
 package bloom
 
 import (
@@ -60,25 +60,12 @@ var salts = [maxK]uint32{
 type Filter struct {
 	blocks []block
 	salts  []uint32 // salts[:k]
-	seed   uint64   // premixed with wyhash.Seed
-}
-
-// Options configures a Filter. The zero value gives the defaults.
-type Options struct {
-	// Seed for the hash function. Default 0.
-	// Filters must have the same seed to be merged or compared.
-	Seed uint64
 }
 
 // New creates a filter for n items with the target false positive
-// probability fpProb, using the default options.
+// probability fpProb.
 // Panics if n is negative or fpProb is not in (0, 1).
 func New(n int, fpProb float64) *Filter {
-	return NewWith(n, fpProb, Options{})
-}
-
-// NewWith is like [New], but with the given options.
-func NewWith(n int, fpProb float64, opts Options) *Filter {
 	if n < 0 {
 		panic("bloom: n must not be negative")
 	}
@@ -103,13 +90,12 @@ func NewWith(n int, fpProb float64, opts Options) *Filter {
 	return &Filter{
 		blocks: blocks,
 		salts:  salts[:k],
-		seed:   wyhash.Seed(opts.Seed),
 	}
 }
 
 // Add adds an item to the filter.
 func (f *Filter) Add(item []byte) {
-	h := wyhash.Hash(item, f.seed)
+	h := wyhash.Hash(item, wyhash.Seed0)
 	b := &f.blocks[(h>>32)*uint64(len(f.blocks))>>32]
 	x := uint32(h)
 	for _, salt := range f.salts {
@@ -121,7 +107,7 @@ func (f *Filter) Add(item []byte) {
 // Contains reports whether the item may be in the filter.
 // False means the item is definitely not in the filter.
 func (f *Filter) Contains(item []byte) bool {
-	h := wyhash.Hash(item, f.seed)
+	h := wyhash.Hash(item, wyhash.Seed0)
 	b := &f.blocks[(h>>32)*uint64(len(f.blocks))>>32]
 	x := uint32(h)
 	m := uint64(1)

@@ -33,7 +33,7 @@ filter.Contains([]byte("carol")) // false (or, rarely, true)
 
 The filter is sized for the given number of items with a given false positive rate. You can add more, but the false positive rate will go up.
 
-Hashing is deterministic (wyhash with a fixed seed), so the same items always produce the same filter. The filter is not designed for adversarial input: don't rely on it if an attacker could benefit from false positives.
+Hashing is deterministic (wyhash with seed 0), so the same items always produce the same filter. The filter is not designed for adversarial input: don't rely on it if an attacker could benefit from false positives.
 
 ## How it works
 

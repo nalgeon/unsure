@@ -7,8 +7,8 @@ import (
 )
 
 func Example() {
-	// Estimates within about 1% of the true count.
-	sketch := hll.New(0.01)
+	// Estimates within about 0.8% of the true count.
+	sketch := hll.New()
 
 	sketch.Add([]byte("alice"))
 	sketch.Add([]byte("bob"))
@@ -20,24 +20,24 @@ func Example() {
 	// 3
 }
 
-func ExampleNewWith() {
-	// Sketches with the same seed hash items the same way.
-	opts := hll.Options{Seed: 42}
-	sketch := hll.NewWith(0.01, opts)
+func ExampleNewPrecision() {
+	// 2^10 registers: 1 KB, estimates within about 3% of the true count.
+	sketch := hll.NewPrecision(10)
 
 	sketch.Add([]byte("alice"))
-	fmt.Println(sketch.Count())
+	sketch.Add([]byte("bob"))
+	fmt.Println(sketch.Count(), sketch.Size())
 	// Output:
-	// 1
+	// 2 1280
 }
 
 func ExampleSketch_Merge() {
 	// Visitors to two pages, counted separately.
-	home := hll.New(0.01)
+	home := hll.New()
 	home.Add([]byte("alice"))
 	home.Add([]byte("bob"))
 
-	docs := hll.New(0.01)
+	docs := hll.New()
 	docs.Add([]byte("bob"))
 	docs.Add([]byte("carol"))
 
@@ -51,7 +51,7 @@ func ExampleSketch_Merge() {
 }
 
 func ExampleSketch_Size() {
-	sketch := hll.New(0.01)
+	sketch := hll.New()
 	fmt.Println(sketch.Size(), "bytes") // 16 KB of registers + 256 B of histogram
 	// Output:
 	// 16640 bytes

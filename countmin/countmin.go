@@ -27,10 +27,10 @@
 // The sketch takes about 4*d*w bytes: ~55 KB for (ε=0.001, δ=0.01),
 // ~540 KB for (ε=0.0001, δ=0.01), and ~5.4 MB for (ε=0.00001, δ=0.01).
 //
-// Hashing is deterministic: wyhash final 4.3 with a fixed seed (0 unless set
-// in [Options]), so the same items always produce the same sketch. The sketch
-// is not designed for adversarially chosen items: anyone who knows the seed
-// can create items that artificially increase other items' estimates.
+// Hashing is deterministic: wyhash final 4.3 with seed 0, so the same items
+// always produce the same sketch. The sketch is not designed for adversarially
+// chosen items: anyone who knows the seed can create items that artificially
+// increase other items' estimates.
 package countmin
 
 import (
@@ -59,27 +59,13 @@ type Sketch struct {
 	counters []uint32 // d rows of width counters, row i at [i*width, (i+1)*width)
 	width    uint64
 	salts    []uint64 // salts[:d]
-	seed     uint64   // premixed with wyhash.Seed
 	total    uint64
 }
 
-// Options configures a Sketch. The zero value gives the defaults.
-type Options struct {
-	// Seed for the hash function. Default 0.
-	// Sketches must have the same seed to be merged or compared.
-	Seed uint64
-}
-
 // New creates a sketch whose estimates exceed the true count
-// by more than epsilon*N with probability at most delta,
-// using the default options.
+// by more than epsilon*N with probability at most delta.
 // Panics if epsilon or delta is not in (0, 1).
 func New(epsilon, delta float64) *Sketch {
-	return NewWith(epsilon, delta, Options{})
-}
-
-// NewWith is like [New], but with the given options.
-func NewWith(epsilon, delta float64, opts Options) *Sketch {
 	if !(epsilon > 0 && epsilon < 1) {
 		panic("countmin: epsilon must be in (0, 1)")
 	}
@@ -104,13 +90,12 @@ func NewWith(epsilon, delta float64, opts Options) *Sketch {
 		counters: counters[:uint64(d)*w],
 		width:    w,
 		salts:    salts[:d],
-		seed:     wyhash.Seed(opts.Seed),
 	}
 }
 
 // Add adds n to the item's count.
 func (s *Sketch) Add(item []byte, n uint32) {
-	h := wyhash.Hash(item, s.seed)
+	h := wyhash.Hash(item, wyhash.Seed0)
 	var idx [maxDepth]uint64
 	est := uint32(math.MaxUint32)
 	for i := range s.salts {
@@ -133,7 +118,7 @@ func (s *Sketch) Add(item []byte, n uint32) {
 // It's never below the true count, except that counts above
 // [math.MaxUint32] are reported as MaxUint32.
 func (s *Sketch) Count(item []byte) uint32 {
-	h := wyhash.Hash(item, s.seed)
+	h := wyhash.Hash(item, wyhash.Seed0)
 	est := uint32(math.MaxUint32)
 	for i := range s.salts {
 		est = min(est, s.counters[s.index(h, i)])

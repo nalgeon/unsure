@@ -2,15 +2,15 @@
 //
 // A sketch estimates the number of distinct items added to it (the
 // cardinality), using a fixed amount of memory that depends only on the
-// accuracy, not on the number of items. The relative standard error of the
-// estimate is at most stdErr, the parameter passed to [New]: about 68% of
-// estimates are within ±stdErr of the true count, 95% within ±2×stdErr, and
-// 99.7% within ±3×stdErr. This holds for any cardinality, from zero up to
-// billions.
+// accuracy, not on the number of items.
 //
-// The sketch has m = 2^p one-byte registers, with p chosen so that the
-// standard error 1.04/√m is at most stdErr (p is between 8 and 18). Each
-// item's hash picks a register and a rank (the number of leading zeros of
+// The sketch has m = 2^p one-byte registers, where p is the precision:
+// 14 with [New], or between 8 and 18 with [NewPrecision]. The relative
+// standard error of the estimate is stdErr = 1.04/√m: about 68% of estimates
+// are within ±stdErr of the true count, 95% within ±2×stdErr, and 99.7%
+// within ±3×stdErr. This holds for any cardinality, from zero up to billions.
+//
+// Each item's hash picks a register and a rank (the number of leading zeros of
 // the rest of the hash, plus one), and the register keeps the largest rank
 // it has seen. Adding an item twice has no effect.
 //
@@ -22,17 +22,24 @@
 // histogram up to date as registers change, so [Sketch.Count] doesn't scan
 // the registers.
 //
-// Sketches with the same precision and seed can be merged: the result is
-// the same as a single sketch that saw the items of both.
+// Sketches with the same precision can be merged: the result is the same
+// as a single sketch that saw the items of both.
 //
-// The registers take 2^p bytes: 256 B at stdErr = 0.065 (p=8), 1 KB at
-// 0.0325 (p=10), 16 KB at 0.0082 (p=14), and 256 KB at 0.0021 (p=18).
-// The histogram adds a fixed 256 bytes.
+// The registers take 2^p bytes, and the histogram adds a fixed 256 bytes.
+// Each +2 to p halves the error and quadruples the memory:
 //
-// Hashing is deterministic: wyhash final 4.3 with a fixed seed (0 unless set
-// in [Options]), so the same items always produce the same sketch. The sketch
-// is not designed for adversarially chosen items: anyone who knows the seed
-// can craft items that inflate the estimate.
+//	p     stdErr   registers
+//	8     6.50%    256 B
+//	10    3.25%    1 KB
+//	12    1.63%    4 KB
+//	14    0.81%    16 KB (default)
+//	16    0.41%    64 KB
+//	18    0.20%    256 KB
+//
+// Hashing is deterministic: wyhash final 4.3 with seed 0, so the same items
+// always produce the same sketch. The sketch is not designed for
+// adversarially chosen items: anyone who knows the seed can craft items
+// that inflate the estimate.
 package hll
 
 import (
@@ -44,8 +51,9 @@ import (
 	"github.com/nalgeon/unsure/internal/wyhash"
 )
 
-// Range of precisions (log2 of the number of registers).
+// Precision (log2 of the number of registers): default and range.
 const (
+	defaultP = 14
 	// Below p=8 the error exceeds 1.04/√m and the bias is a few percent,
 	// while the registers would save at most 240 bytes next to the
 	// 256-byte histogram.
@@ -56,14 +64,12 @@ const (
 // alphaInf is the asymptotic bias correction constant 1/(2 ln 2).
 const alphaInf = 0.7213475204444817
 
-// Errors returned by Sketch methods.
-var (
-	ErrPrecisionMismatch = errors.New("hll: sketches have different precisions")
-	ErrSeedMismatch      = errors.New("hll: sketches have different seeds")
-)
+// ErrPrecisionMismatch is returned by [Sketch.Merge] when
+// the sketches have different precisions.
+var ErrPrecisionMismatch = errors.New("hll: sketches have different precisions")
 
 // Sketch estimates the number of distinct items added to it,
-// with relative standard error at most stdErr.
+// with relative standard error about 1.04/√(2^p).
 //
 // Sketch is not safe for concurrent use if any goroutine calls Add or Merge.
 type Sketch struct {
@@ -72,38 +78,25 @@ type Sketch struct {
 	// Values are at most 65-p, so 64 entries are enough.
 	hist [64]uint32
 	p    uint8
-	seed uint64 // premixed with wyhash.Seed
 }
 
-// Options configures a Sketch. The zero value gives the defaults.
-type Options struct {
-	// Seed for the hash function. Default 0.
-	// Sketches must have the same seed to be merged.
-	Seed uint64
+// New creates a sketch with the default precision p=14:
+// 2^14 registers (16 KB), relative standard error about 0.81%.
+func New() *Sketch {
+	return NewPrecision(defaultP)
 }
 
-// New creates a sketch with relative standard error at most stdErr,
-// using the default options.
-// Panics if stdErr is not in (0, 1) or is below 1.04/512 ≈ 0.00203
-// (2^18 registers).
-func New(stdErr float64) *Sketch {
-	return NewWith(stdErr, Options{})
-}
-
-// NewWith is like [New], but with the given options.
-func NewWith(stdErr float64, opts Options) *Sketch {
-	if !(stdErr > 0 && stdErr < 1) {
-		panic("hll: stdErr must be in (0, 1)")
-	}
-	p := precision(stdErr)
-	if p > maxP {
-		panic("hll: stdErr is too small")
+// NewPrecision creates a sketch with 2^p registers and relative standard
+// error about 1.04/√(2^p). See the package docs for common values.
+// Panics if p is not in [8, 18].
+func NewPrecision(p int) *Sketch {
+	if p < minP || p > maxP {
+		panic("hll: p must be in [8, 18]")
 	}
 	m := 1 << p
 	s := &Sketch{
 		regs: make([]uint8, m),
 		p:    uint8(p),
-		seed: wyhash.Seed(opts.Seed),
 	}
 	s.hist[0] = uint32(m)
 	return s
@@ -111,7 +104,7 @@ func NewWith(stdErr float64, opts Options) *Sketch {
 
 // Add adds an item to the sketch.
 func (s *Sketch) Add(item []byte) {
-	s.addHash(wyhash.Hash(item, s.seed))
+	s.addHash(wyhash.Hash(item, wyhash.Seed0))
 }
 
 // addHash adds an item with hash h.
@@ -153,13 +146,10 @@ func (s *Sketch) Count() uint64 {
 
 // Merge adds the items of other to s, so that s estimates the number of
 // distinct items added to either. Other is unchanged.
-// Returns an error if the sketches have different precisions or seeds.
+// Returns [ErrPrecisionMismatch] if the sketches have different precisions.
 func (s *Sketch) Merge(other *Sketch) error {
 	if s.p != other.p {
 		return ErrPrecisionMismatch
-	}
-	if s.seed != other.seed {
-		return ErrSeedMismatch
 	}
 	// Compare 8 registers at a time. Registers are below 128, so in
 	// (x | 0x80…) - y each byte is x+128-y without borrowing from the next,
@@ -194,15 +184,6 @@ func (s *Sketch) Merge(other *Sketch) error {
 // in bytes.
 func (s *Sketch) Size() int {
 	return len(s.regs) + 4*len(s.hist)
-}
-
-// precision returns the smallest p >= minP with 1.04/√(2^p) <= stdErr.
-// It may be above maxP.
-func precision(stdErr float64) int {
-	x := 1.04 / stdErr
-	// Tolerance so that stdErr = 1.04/2^(p/2) gives exactly p.
-	p := int(math.Ceil(math.Log2(x*x) - 1e-9))
-	return max(p, minP)
 }
 
 // sigma(x) = x + Σ_{k≥1} x^(2^k) 2^(k-1), for x in [0, 1].

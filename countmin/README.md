@@ -42,7 +42,7 @@ Choose ε to be smaller than the smallest fraction of N that matters to you. A c
 
 Counts are stored as 32-bit numbers. If an item is added more than about 4.3 billion times, its count stays at `math.MaxUint32`.
 
-Hashing is deterministic (wyhash with a fixed seed), so the same items always produce the same sketch. You can change the seed with `countmin.NewWith`. The sketch is not designed for adversarial input: anyone who knows the seed can craft items that inflate other items' estimates.
+Hashing is deterministic (wyhash with seed 0), so the same items always produce the same sketch. The sketch is not designed for adversarial input: anyone who knows the seed can craft items that inflate other items' estimates.
 
 ## How it works
 

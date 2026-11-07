@@ -2,6 +2,12 @@ package wyhash
 
 import "testing"
 
+func TestSeed0(t *testing.T) {
+	if got := Seed(0); got != Seed0 {
+		t.Errorf("Seed(0) = %#x, want Seed0 = %#x", got, uint64(Seed0))
+	}
+}
+
 // Upstream test vectors: test_vector.cpp in github.com/wangyi-fudan/wyhash
 // (wyhash final 4.3, default secrets).
 func TestWyhashVectors(t *testing.T) {

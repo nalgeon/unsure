@@ -15,6 +15,9 @@ const (
 	wyp3 = 0x4d5a2da51de1aa47
 )
 
+// Seed0 is Seed(0): the premixed fixed seed that all structures hash with.
+const Seed0 = 0xca813bf4c7abf0a9
+
 // Seed premixes a seed for Hash. It's the part of wyhash that depends
 // only on the seed, split out so callers can do it once instead of per item.
 func Seed(seed uint64) uint64 {

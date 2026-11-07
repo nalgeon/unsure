@@ -48,9 +48,7 @@ type hllImpl struct {
 }
 
 var hllImpls = []hllImpl{
-	{"unsure", func(p int) hllSketch {
-		return unsureHLL{hll.New(1.04 / math.Sqrt(float64(int(1)<<p)))}
-	}},
+	{"unsure", func(p int) hllSketch { return unsureHLL{hll.NewPrecision(p)} }},
 	{"axiom", func(p int) hllSketch {
 		s, err := hyperloglog.NewSketch(uint8(p), true)
 		if err != nil {
@@ -74,10 +72,7 @@ var hllImpls = []hllImpl{
 func TestHLLAccuracy(t *testing.T) {
 	const p = 14
 	const m = 1 << p
-	trials := 100
-	if testing.Short() {
-		trials = 20
-	}
+	const trials = 100
 	// From tiny, through the 2.5m–5m range where the original HyperLogLog
 	// switches estimators, to far beyond m.
 	points := []int{100, 1000, 10_000, 20_000, 40_000, 80_000, 160_000, 1_000_000}
@@ -306,7 +301,6 @@ func BenchmarkHLLMerge(b *testing.B) {
 // 1M distinct 8-byte strings (the example from the hll README).
 func TestHLLVsMap(t *testing.T) {
 	const n = 1_000_000
-	const stdErr = 0.01
 	_, mapBytes := retained(func() map[string]struct{} {
 		set := make(map[string]struct{})
 		var buf [8]byte
@@ -317,7 +311,7 @@ func TestHLLVsMap(t *testing.T) {
 		return set
 	})
 	_, sketchBytes := retained(func() *hll.Sketch {
-		sketch := hll.New(stdErr)
+		sketch := hll.New()
 		var buf [8]byte
 		for i := range n {
 			binary.LittleEndian.PutUint64(buf[:], uint64(i))
@@ -326,8 +320,8 @@ func TestHLLVsMap(t *testing.T) {
 		return sketch
 	})
 	mb := func(bytes int) float64 { return float64(bytes) / 1e6 }
-	t.Logf("n=%d strings of 8 bytes: map=%.2f MB, sketch stdErr=%g: %.3f MB, %.0fx smaller",
-		n, mb(mapBytes), stdErr, mb(sketchBytes), float64(mapBytes)/float64(sketchBytes))
+	t.Logf("n=%d strings of 8 bytes: map=%.2f MB, sketch: %.3f MB, %.0fx smaller",
+		n, mb(mapBytes), mb(sketchBytes), float64(mapBytes)/float64(sketchBytes))
 	if sketchBytes*1000 > mapBytes {
 		t.Errorf("sketch is only %.1fx smaller than map, want at least 1000x", float64(mapBytes)/float64(sketchBytes))
 	}

@@ -42,3 +42,13 @@ Design: d = ⌈ln 1/δ⌉ ≤ 16 rows of w = ⌈e/ε⌉ uint32 counters in one s
 | 13 / 17 / 80 | 8.7 / 12 / 50 | 139 / 23 / 0.3 | 536 KB |
 
 vs baseline: geomean 21.1 vs 54.6 ns (2.6× faster), half the memory (uint32), 2–2.7× lower mean error (conservative update). Out of cache, both Add and Count make d independent loads (row indices come from h alone, so the misses overlap). Add then writes all d lines back, which are already cached but now dirty.
+
+## 3. Seed removed
+
+API review across bloom/countmin/hll: no compared library or Redis lets users set the seed, and a public seed gives no adversarial protection anyway. Removed `Options` and `NewWith`; always seed 0, premixed as the constant `wyhash.Seed0` (no `seed` field). (d, w) constructor considered (like Redis CMS.INITBYDIM) and deferred until someone needs it.
+
+| Add          | Count         |
+| ------------ | ------------- |
+| 13 / 17 / 83 | 8.6 / 11 / 51 |
+
+Single `make countmin-bench` run, same as entry 2 within noise. Accuracy and size unchanged (same hashing).

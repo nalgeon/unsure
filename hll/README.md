@@ -6,7 +6,7 @@ A simple and fast HyperLogLog implemented in Go.
 
 HyperLogLog is a unique items counter that trades accuracy for space. It tells you approximately how many _different_ items it has seen, no matter how many times each one appeared. HyperLogLog (also called a _sketch_ from here on) doesn't actually store the items, so it's much more compact than a regular set.
 
-For example, a regular set (`map[string]struct{}`) of 1,000,000 distinct 8-byte strings takes about 64 MB. A HyperLogLog sketch counting the same strings with about 1% error uses only 16 KB — that's almost 4,000 times smaller. The size of the sketch doesn't depend on the number of items or their size, only on the accuracy you choose. A 16 KB sketch counts a billion items just as well as a thousand.
+For example, a regular set (`map[string]struct{}`) of 1,000,000 distinct 8-byte strings takes about 64 MB. A HyperLogLog sketch counting the same strings with about 0.8% error uses only 16 KB — that's almost 4,000 times smaller. The size of the sketch doesn't depend on the number of items or their size, only on the accuracy you choose. A 16 KB sketch counts a billion items as accurately as a thousand.
 
 HyperLogLog is useful when you need to count unique things in a large stream: unique visitors to a website, unique IP addresses hitting a server, unique search queries per day, or distinct values in a database column. You can merge sketches to gather data from multiple machines or segments (like by hour, page, or region). When you merge two sketches, you get the total number of unique items from both, without counting shared items twice.
 
@@ -21,8 +21,8 @@ go get github.com/nalgeon/unsure
 ```go
 import "github.com/nalgeon/unsure/hll"
 
-// Estimates within about 1% of the true count.
-sketch := hll.New(0.01)
+// Estimates within about 0.8% of the true count.
+sketch := hll.New()
 
 sketch.Add([]byte("alice"))
 sketch.Add([]byte("bob"))
@@ -35,18 +35,29 @@ sketch.Count() // 3 (approximately)
 Merging sketches:
 
 ```go
-home := hll.New(0.01) // visitors to the home page
-docs := hll.New(0.01) // visitors to the docs
+home := hll.New() // visitors to the home page
+docs := hll.New() // visitors to the docs
 // ...
 home.Merge(docs)
 home.Count() // visitors to either page
 ```
 
-The sketch has one setting: the relative standard error. With `hll.New(0.01)` and 1 million distinct items, about 68% of the time the estimate is within 1% (10,000) of the true count, 95% within 2% (2×stdErr), and 99.7% within 3% (3×stdErr). The error is relative to the count, so it's the same 1% for a thousand items or a billion (and smaller for counts below about 100,000).
+The sketch has one setting: the precision p, which gives 2^p registers and a relative standard error (stdErr) of 1.04/√(2^p). `hll.New()` uses p=14, a common default, with 0.81% error. With 1 million distinct items, about 68% of the time the estimate is within 0.81% (8,100) of the true count, 95% within 1.6% (2×stdErr), and 99.7% within 2.4% (3×stdErr). The error is relative to the count, so it's the same 0.81% upper bound for a thousand items or a billion.
 
-The sketch takes 1.08/err² bytes, rounded up to a power of 2: 256 bytes for 6.5% error (the smallest sketch; any larger error gives this one), 1 KB for 3.3%, 16 KB for 0.82% (1% rounds up to that), 256 KB for 0.21% (the smallest supported error), plus a fixed 256 bytes for the histogram (see below). Each 2× lower error costs 4× more memory.
+To trade accuracy for memory, use `hll.NewPrecision(p)` with p from 8 to 18. Each +2 to p halves the error and quadruples the memory:
 
-Sketches can only be merged if they were created with the same error and seed. Hashing is deterministic (wyhash with a fixed seed), so the same items always produce the same sketch. You can change the seed with `hll.NewWith`. The sketch is not designed for adversarial input: anyone who knows the seed can craft items that inflate the count.
+| p   | Error | Registers |
+| --- | ----- | --------- |
+| 8   | 6.5%  | 256 B     |
+| 10  | 3.3%  | 1 KB      |
+| 12  | 1.6%  | 4 KB      |
+| 14  | 0.81% | 16 KB     |
+| 16  | 0.41% | 64 KB     |
+| 18  | 0.20% | 256 KB    |
+
+The sketch also has a fixed 256-byte histogram (see below).
+
+Sketches can only be merged if they have the same precision. Hashing is deterministic (wyhash with seed 0), so the same items always produce the same sketch. The sketch is not designed for adversarial input: anyone who knows the seed can craft items that inflate the count.
 
 ## How it works
 

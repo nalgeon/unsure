@@ -198,14 +198,14 @@ func TestConservativeUpdate(t *testing.T) {
 			// Plain count-min with the same layout.
 			plain := make([]uint32, len(s.counters))
 			for _, id := range st.events {
-				h := wyhash.Hash(st.keys[id], s.seed)
+				h := wyhash.Hash(st.keys[id], wyhash.Seed0)
 				for i := range s.salts {
 					plain[s.index(h, i)]++
 				}
 			}
 			lower := 0
 			for id, k := range st.keys {
-				h := wyhash.Hash(k, s.seed)
+				h := wyhash.Hash(k, wyhash.Seed0)
 				p := uint32(math.MaxUint32)
 				for i := range s.salts {
 					p = min(p, plain[s.index(h, i)])
@@ -277,27 +277,6 @@ func TestErrorBound(t *testing.T) {
 	}
 }
 
-func TestSeed(t *testing.T) {
-	keys := makeKeys(1, 1000)
-	a := NewWith(0.01, 0.01, Options{Seed: 1})
-	b := NewWith(0.01, 0.01, Options{Seed: 1})
-	c := NewWith(0.01, 0.01, Options{Seed: 2})
-	for _, k := range keys {
-		a.Add(k, 1)
-		b.Add(k, 1)
-		c.Add(k, 1)
-	}
-	if !slices.Equal(a.counters, b.counters) {
-		t.Errorf("same seed, different counters")
-	}
-	if slices.Equal(a.counters, c.counters) {
-		t.Errorf("different seeds, same counters")
-	}
-	if d := New(0.01, 0.01); d.seed != wyhash.Seed(0) {
-		t.Errorf("default seed = %#x, want wyhash.Seed(0)", d.seed)
-	}
-}
-
 // TestRowsIndependent checks that, for every pair of rows, the number of item
 // pairs that share a counter in both is close to the 1/width² expected
 // if rows were independent. Correlated rows would make the min of d counters
@@ -310,7 +289,7 @@ func TestRowsIndependent(t *testing.T) {
 	}
 	hashes := make([]uint64, n)
 	for i, k := range makeKeys(1, n) {
-		hashes[i] = wyhash.Hash(k, s.seed)
+		hashes[i] = wyhash.Hash(k, wyhash.Seed0)
 	}
 	w := float64(s.width)
 	want := float64(n) * (n - 1) / 2 / (w * w)

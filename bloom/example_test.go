@@ -22,17 +22,6 @@ func Example() {
 	// false
 }
 
-func ExampleNewWith() {
-	// Filters with the same seed hash items the same way.
-	opts := bloom.Options{Seed: 42}
-	filter := bloom.NewWith(1000, 0.01, opts)
-
-	filter.Add([]byte("alice"))
-	fmt.Println(filter.Contains([]byte("alice")))
-	// Output:
-	// true
-}
-
 func ExampleFilter_Size() {
 	filter := bloom.New(1_000_000, 0.01)
 	fmt.Printf("%.1f bits per item\n", float64(filter.Size()*8)/1_000_000)

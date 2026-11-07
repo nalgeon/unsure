@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"runtime"
-	"slices"
 	"strings"
 	"testing"
 )
@@ -241,33 +240,6 @@ func fill(f *Filter, seed uint64, n int) {
 	for i := range n {
 		binary.LittleEndian.PutUint64(k[8:], uint64(i))
 		f.Add(k)
-	}
-}
-
-func TestSeed(t *testing.T) {
-	const n = 1000
-	build := func(f *Filter) *Filter {
-		fill(f, 1, n)
-		return f
-	}
-	a := build(New(n, 0.01))
-	b := build(New(n, 0.01))
-	zero := build(NewWith(n, 0.01, Options{Seed: 0}))
-	other := build(NewWith(n, 0.01, Options{Seed: 1}))
-
-	if !slices.Equal(a.blocks, b.blocks) {
-		t.Error("two filters with the same items and options differ")
-	}
-	if !slices.Equal(a.blocks, zero.blocks) {
-		t.Error("New differs from NewWith with Seed: 0")
-	}
-	if slices.Equal(a.blocks, other.blocks) {
-		t.Error("Seed: 1 gives the same filter as the default seed")
-	}
-	for _, k := range makeKeys(1, n) {
-		if !other.Contains(k) {
-			t.Fatalf("added key %x not found with Seed: 1", k)
-		}
 	}
 }
 
