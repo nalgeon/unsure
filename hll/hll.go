@@ -34,6 +34,7 @@
 package hll
 
 import (
+	"encoding/binary"
 	"errors"
 	"math"
 	"math/bits"
@@ -154,14 +155,31 @@ func (s *Sketch) Merge(other *Sketch) error {
 	if s.seed != other.seed {
 		return ErrSeedMismatch
 	}
+	// Compare 8 registers at a time. Registers are below 128, so in
+	// (x | 0x80…) - y each byte is x+128-y without borrowing from the next,
+	// and its high bit is clear if and only if y > x. The number of registers
+	// is a power of two ≥ 16, so there is no tail.
+	const hi = 0x8080808080808080
 	regs := s.regs[:len(other.regs)]
-	for i, r := range other.regs {
-		old := regs[i]
-		if r > old {
-			regs[i] = r
-			s.hist[old&63]--
-			s.hist[r&63]++
+	for i := 0; i+8 <= len(regs); i += 8 {
+		a, b := regs[i:i+8:i+8], other.regs[i:i+8:i+8]
+		x := binary.LittleEndian.Uint64(a)
+		y := binary.LittleEndian.Uint64(b)
+		// gt has the high bit set in each byte where b > a.
+		gt := ^((x | hi) - y) & hi
+		if gt == 0 {
+			continue
 		}
+		// For each register j that grew (one set bit per byte in gt),
+		// move its histogram count from the old value to the new one.
+		for g := gt; g != 0; g &= g - 1 {
+			j := bits.TrailingZeros64(g) >> 3
+			s.hist[a[j]&63]--
+			s.hist[b[j]&63]++
+		}
+		// Take b's byte where it's larger: spread each flag to 0xff.
+		mask := (gt >> 7) * 0xff
+		binary.LittleEndian.PutUint64(a, x&^mask|y&mask)
 	}
 	return nil
 }

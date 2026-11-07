@@ -24,3 +24,17 @@ Design: m = 2^p uint8 registers, p = ⌈log2((1.04/stdErr)²)⌉ in 4..18. One w
 | 5.5 / 5.6 / 8.1 | 68 / 62 / 57 | 381 / 5.9k / 94.1k | 0.63 / 0.64 / 0.79% | 16.3 KB |
 
 vs axiom: Add −27% at p=10/14, +3% at p=18; Count 270–83,000× faster (axiom scans all registers with `math.Pow`, ours reads 64 histogram entries); Merge −26%; equal accuracy at n ≥ m (RMSE ≈ 1.0× stdErr asymptotically, measured with 3000 trials). Costs: +256 bytes for the histogram, and 16 KB from the first item where axiom's sparse mode takes ~1 KB. Integer rounding of Count gives up to −4.6% relative bias at tiny n (e.g. n=7, p=6), at most 0.5 in absolute terms.
+
+## 2. Merge 8 registers at a time, realistic Merge benchmark
+
+Benchmark: the old Merge bench merged the same sketch repeatedly, so after the first loop no register grew (case=same). Added case=disjoint: merge into fresh copies of a filled sketch (prepared untimed in batches; per-loop StopTimer stops the world), rotating between 8 different others (with a single other, the branch predictor learned the growth pattern even at p=14: old Merge 35 µs vs 62 µs rotated). axiom/boom Merge reference re-recorded; entries 0–1 Merge = case=same.
+
+Design: Merge compares 8 registers per uint64. Registers are < 128, so `^((x|0x80…) − y) & 0x80…` flags bytes where other > s without cross-byte borrow; skip the word if none, else update the histogram per flagged byte and blend with `(gt>>7)*0xff`. m is a power of two ≥ 16, so no tail. Tested against per-byte max with 0 and 65-p values.
+
+Merge same / disjoint, ns/op at p = 10 / 14 / 18 (Add, Count, RMSE, size unchanged):
+
+| Merge same         | Merge disjoint      |
+| ------------------ | ------------------- |
+| 125 / 1.9k / 30.1k | 730 / 20.1k / 341k  |
+
+vs old Merge: same 3.1× faster at all p; disjoint 1.2× / 3.1× / 3.0× (old: 0.90k / 62k / 1.03M). vs axiom: same −76%, disjoint −57% / −66% / −64% (axiom 1.71k / 58.6k / 951k; old Merge was +6% / +8% slower than axiom at p=14/18 in this case). At p=10 the histogram updates take about half of the disjoint time (350 ns without them): updates to the same few bins form a dependency chain.

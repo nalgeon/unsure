@@ -225,23 +225,79 @@ func BenchmarkHLLCount(b *testing.B) {
 	}
 }
 
+// hllMergeBatch is the total register size of the sketch copies that
+// BenchmarkHLLMerge prepares at once for case=disjoint. Small enough to stay
+// in L2, large enough to amortize StopTimer (which stops the world).
+const hllMergeBatch = 1 << 20
+
+// hllMergeOthers is the number of different sketches that
+// BenchmarkHLLMerge merges in turn for case=disjoint.
+const hllMergeOthers = 8
+
+// BenchmarkHLLMerge merges two sketches filled with different keys.
+// case=same merges into a sketch that already contains other, so no
+// register grows. case=disjoint merges into fresh copies of the original
+// sketch (prepared untimed, in batches), so about half of the registers
+// grow, as in a real merge of unrelated sketches.
 func BenchmarkHLLMerge(b *testing.B) {
 	for _, p := range hllBenchP {
-		for _, im := range hllImpls {
-			b.Run(fmt.Sprintf("p=%d/impl=%s", p, im.name), func(b *testing.B) {
-				s, other := im.new(p), im.new(p)
-				for _, k := range makeKeys(1, hllBenchKeys) {
-					s.Add(k)
-				}
-				for _, k := range makeKeys(2, hllBenchKeys) {
-					other.Add(k)
-				}
-				for b.Loop() {
-					if err := s.Merge(other); err != nil {
-						b.Fatal(err)
+		for _, cs := range []string{"same", "disjoint"} {
+			for _, im := range hllImpls {
+				b.Run(fmt.Sprintf("p=%d/case=%s/impl=%s", p, cs, im.name), func(b *testing.B) {
+					fill := func(seed uint64) hllSketch {
+						s := im.new(p)
+						for _, k := range makeKeys(seed, hllBenchKeys) {
+							s.Add(k)
+						}
+						return s
 					}
-				}
-			})
+					base, other := fill(1), fill(2)
+					// Not every implementation can clone,
+					// so copy by merging into an empty sketch.
+					copyBase := func() hllSketch {
+						s := im.new(p)
+						if err := s.Merge(base); err != nil {
+							b.Fatal(err)
+						}
+						return s
+					}
+					if cs == "same" {
+						s := copyBase()
+						if err := s.Merge(other); err != nil {
+							b.Fatal(err)
+						}
+						for b.Loop() {
+							if err := s.Merge(other); err != nil {
+								b.Fatal(err)
+							}
+						}
+						return
+					}
+					// Merging the same other every time lets the branch
+					// predictor learn the pattern of growing registers
+					// (it does at p=10), so rotate between several.
+					others := []hllSketch{other}
+					for seed := range uint64(hllMergeOthers - 1) {
+						others = append(others, fill(3+seed))
+					}
+					batch := make([]hllSketch, max(1, hllMergeBatch>>p))
+					i := len(batch)
+					for b.Loop() {
+						if i == len(batch) {
+							b.StopTimer()
+							for j := range batch {
+								batch[j] = copyBase()
+							}
+							i = 0
+							b.StartTimer()
+						}
+						if err := batch[i].Merge(others[i%len(others)]); err != nil {
+							b.Fatal(err)
+						}
+						i++
+					}
+				})
+			}
 		}
 	}
 }

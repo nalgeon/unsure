@@ -60,7 +60,8 @@ hll-test:
 # Add runs a fixed number of iterations to cycle through all keys; Count and Merge run for a fixed time.
 hll-bench:
 	@(go test -C bench -run x -bench 'HLLAdd.*//impl=unsure' -benchtime 1000000x -count 3 . && \
-	  go test -C bench -run x -bench 'HLL(Count|Merge).*//impl=unsure' -benchtime 200ms -count 3 .) | benchstat -col /impl bench/$(HLL_REF) -
+	  go test -C bench -run x -bench 'HLLCount//impl=unsure' -benchtime 200ms -count 3 . && \
+	  go test -C bench -run x -bench 'HLLMerge///impl=unsure' -benchtime 200ms -count 3 .) | benchstat -col /impl bench/$(HLL_REF) -
 
 # Record reference (axiomhq, BoomFilters) results. Rerun on a new machine or Go version.
 hll-bench-ref:

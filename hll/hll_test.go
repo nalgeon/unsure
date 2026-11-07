@@ -241,6 +241,72 @@ func TestMerge(t *testing.T) {
 	t.Logf("union of 30000+50000 (10000 shared): Count = %d", a.Count())
 }
 
+// TestMergeRegisters checks the 8-at-a-time Merge against a plain per-byte
+// max on random registers, including 0 and the maximum value 65-p.
+func TestMergeRegisters(t *testing.T) {
+	r := rand.New(rand.NewPCG(3, 4))
+	for _, p := range []int{minP, 6, 10, maxP} {
+		m := 1 << p
+		stdErr := 1.04 / math.Sqrt(float64(m))
+		maxR := 65 - p
+		// fill sets registers to random values, keeping the histogram
+		// consistent. Each source picks a value for register i.
+		fill := func(s *Sketch, val func(i int) uint8) {
+			for i := range s.regs {
+				s.regs[i] = val(i)
+			}
+			s.hist = histogram(s)
+		}
+		randVal := func(int) uint8 {
+			switch r.IntN(4) {
+			case 0:
+				return 0
+			case 1:
+				return uint8(maxR)
+			default:
+				return uint8(r.IntN(maxR + 1))
+			}
+		}
+		cases := []struct {
+			name string
+			a, b func(i int) uint8
+		}{
+			{"random", randVal, randVal},
+			{"empty other", randVal, func(int) uint8 { return 0 }},
+			{"empty s", func(int) uint8 { return 0 }, randVal},
+			{"all max", func(int) uint8 { return 0 }, func(int) uint8 { return uint8(maxR) }},
+			{"alternating", func(i int) uint8 { return uint8(i % 2 * maxR) }, func(i int) uint8 { return uint8((i + 1) % 2 * maxR) }},
+		}
+		for _, c := range cases {
+			a, b := New(stdErr), New(stdErr)
+			fill(a, c.a)
+			fill(b, c.b)
+			want := slices.Clone(a.regs)
+			for i, v := range b.regs {
+				want[i] = max(want[i], v)
+			}
+			bRegs := slices.Clone(b.regs)
+			if err := a.Merge(b); err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(a.regs, want) {
+				t.Errorf("p=%d %s: registers differ from per-byte max", p, c.name)
+			}
+			if a.hist != histogram(a) {
+				t.Errorf("p=%d %s: hist = %v, want %v", p, c.name, a.hist, histogram(a))
+			}
+			if !slices.Equal(b.regs, bRegs) {
+				t.Errorf("p=%d %s: Merge changed other", p, c.name)
+			}
+			// Merging the same sketch again changes nothing.
+			regs, hist := slices.Clone(a.regs), a.hist
+			if err := a.Merge(b); err != nil || !slices.Equal(a.regs, regs) || a.hist != hist {
+				t.Errorf("p=%d %s: second merge changed the sketch (err %v)", p, c.name, err)
+			}
+		}
+	}
+}
+
 func TestMergeMismatch(t *testing.T) {
 	a := New(0.01)
 	if err := a.Merge(New(0.02)); err != ErrPrecisionMismatch {

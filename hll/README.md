@@ -79,17 +79,19 @@ Registers are one byte each. The item is hashed once with [wyhash](https://githu
 
 Compared to [axiomhq/hyperloglog](https://github.com/axiomhq/hyperloglog) (HyperLogLog with LogLog-Beta estimator and sparse mode) and [tylertreat/BoomFilters](https://github.com/tylertreat/BoomFilters) (classic HyperLogLog). Apple M1, 16-byte items, ns/op (lower is better):
 
-| Operation |   p |   Size |     unsure |     axiom | BoomFilters |
-| --------- | --: | -----: | ---------: | --------: | ----------: |
-| Add       |  10 |   1 KB |    **5.5** |       7.6 |          27 |
-|           |  14 |  16 KB |    **5.6** |       7.6 |          27 |
-|           |  18 | 256 KB |        8.1 |   **7.9** |          24 |
-| Count     |  10 |   1 KB |     **68** |    18,300 |      18,100 |
-|           |  14 |  16 KB |     **62** |   350,000 |     328,000 |
-|           |  18 | 256 KB |     **57** | 4,710,000 |   4,520,000 |
-| Merge     |  10 |   1 KB |    **381** |       509 |         510 |
-|           |  14 |  16 KB |  **5,870** |     7,940 |       7,900 |
-|           |  18 | 256 KB | **94,100** |   127,000 |     126,400 |
+| Operation |   p |   Size |      unsure |     axiom | BoomFilters |
+| --------- | --: | -----: | ----------: | --------: | ----------: |
+| Add       |  10 |   1 KB |     **5.5** |       7.6 |          27 |
+|           |  14 |  16 KB |     **5.6** |       7.6 |          27 |
+|           |  18 | 256 KB |         8.1 |   **7.9** |          24 |
+| Count     |  10 |   1 KB |      **68** |    18,300 |      18,100 |
+|           |  14 |  16 KB |      **62** |   350,000 |     328,000 |
+|           |  18 | 256 KB |      **57** | 4,710,000 |   4,520,000 |
+| Merge     |  10 |   1 KB |     **730** |     1,710 |       1,600 |
+|           |  14 |  16 KB |  **20,100** |    58,600 |      54,300 |
+|           |  18 | 256 KB | **341,000** |   951,000 |     847,000 |
+
+`Merge` combines two sketches filled with different items, so about half of the registers grow.
 
 Accuracy at p=14 (0.81% standard error), relative RMSE over 100 sketches (lower is better):
 
@@ -103,6 +105,6 @@ _axiomhq_ is nearly exact below ~16,000 items thanks to its sparse mode, which a
 
 The `Count` gap comes from how the estimate is computed. _axiomhq_ and _BoomFilters_ scan all the registers on every count, computing 2^-register with `math.Pow` for each one (about 20 ns per register), so their `Count` grows with the sketch size. _unsure_ keeps a histogram of register values up to date as registers change, and `Count` loops over its 64 entries regardless of the sketch size. The cost of keeping the histogram moves to `Add`, which updates it only when a register grows (often while the sketch fills up, rarely after).
 
-Overall, _unsure_ adds about as fast as _axiomhq_ (27% faster when the sketch fits in L1, 3% slower at 256 KB), counts 270–83,000× faster, and merges 26% faster, with the same accuracy for counts above the number of registers.
+Overall, _unsure_ adds about as fast as _axiomhq_ (27% faster when the sketch fits in L1, 3% slower at 256 KB), counts 270–83,000× faster, and merges 2.3–2.9× faster, with the same accuracy for counts above the number of registers.
 
 To reproduce, run `make hll-bench-full` and `make hll-accuracy` from the repository root.
