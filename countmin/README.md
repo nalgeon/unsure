@@ -8,7 +8,9 @@ A count-min sketch is a frequency table that trades accuracy for space. It tells
 
 For example, a regular map (`map[string]uint32`) counting 1,000,000 distinct 8-byte strings takes about 64 MB. A count-min sketch for the same strings, with estimates within 0.01% of the total count (with 99% probability), uses only 0.55 MB — that's 116 times smaller. The size of the sketch doesn't depend on the number of distinct items or their size, only on the accuracy you choose, so the difference gets even bigger with more or longer strings.
 
-A count-min sketch is useful when you want to track how often different items appear, but only care about the frequent ones. For example, you might use it to track popular search queries, IP addresses with heavy traffic, or hot keys in a cache. The error depends on the total of all counts, not on each individual item. Therefore, frequent items are estimated more or less accurately, but rare items are not — the absolute error is too high for them.
+A count-min sketch is useful when you want to track how many times an item shows up in a large stream of events. It's often used to check if something has happened a certain number of times, like rate-limiting an IP after X requests or sending an alert after an error happens Y times. A sketch can also help decide if a key is worth keeping in the cache given how often it was requested. Finally, a sketch can identify the most common items when used with a small heap of candidates (since the sketch itself can't list the items).
+
+The counting error in a sketch depends on the total of all counts, not on each individual item. Therefore, frequent items are estimated more or less accurately relative to their count, but rare items are not — the absolute error is too high for them.
 
 You can increase the per-item counter in a sketch and get the estimated count for an item, but you cannot decrease a counter or iterate over the items.
 
@@ -44,16 +46,59 @@ Hashing is deterministic (wyhash with a fixed seed), so the same items always pr
 
 ## How it works
 
-**Classic count-min sketch**. The sketch is a table of counters with d rows and w columns, all starting at zero. Each row uses its own hash function that maps an item to one of the w counters. To add an item, you increment its counter in each row. To estimate an item's count, you take the smallest value from its d counters:
+**The classic count-min sketch** is a table of counters with d rows and w columns, all starting at zero. Each row uses its own hash function that maps an item to one of the w counters. To add an item, you increment its counter in each row:
+
+```
+        ┌──────┐                       ┌───────┐
+item ──►│ hash │──► h1, h2, ..., hd ──►│ mod w │──► i1, i2, ..., id
+        └──────┘                       └───────┘
+
+       ┌───┬───┬─▼─┬───┬───┬───┬───┬───┬───┬───┐
+row 1  │ 0 │ 2 │ 4 │ 0 │ 1 │ 0 │ 0 │ 3 │ 0 │ 1 │  4 → 5
+       ├───┼───┼───┼───┼───┼───┼─▼─┼───┼───┼───┤
+row 2  │ 1 │ 0 │ 0 │ 0 │ 2 │ 0 │ 3 │ 0 │ 1 │ 0 │  3 → 4
+       ├───┼───┼───┼───┼───┼───┼───┼───┼─▼─┼───┤
+row d  │ 0 │ 1 │ 0 │ 2 │ 0 │ 0 │ 1 │ 0 │ 5 │ 0 │  5 → 6
+       └───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
+                 i1              i2      id
+```
+
+To estimate an item's count, you take the smallest value from its d counters:
 
 - Other items might hash to the same counter, so each counter value is ≥ true count.
 - The smallest counter is the one with the fewest collisions, so it's the best estimate.
 
+```
+       ┌───┬───┬─▼─┬───┬───┬───┬───┬───┬───┬───┐
+row 1  │ 0 │ 2 │ 4 │ 0 │ 1 │ 0 │ 0 │ 3 │ 0 │ 1 │  4
+       ├───┼───┼───┼───┼───┼───┼─▼─┼───┼───┼───┤
+row 2  │ 1 │ 0 │ 0 │ 0 │ 2 │ 0 │ 3 │ 0 │ 1 │ 0 │  3
+       ├───┼───┼───┼───┼───┼───┼───┼───┼─▼─┼───┤
+row d  │ 0 │ 1 │ 0 │ 2 │ 0 │ 0 │ 1 │ 0 │ 5 │ 0 │  5   min = 3
+       └───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
+```
+
 With w = e/ε columns, each counter's error is at most ε×N, with probability at least 1 − 1/e. If you use d = ln(1/δ) rows, the chance that all d of the item's counters exceed its true count by more than ε×N is ≤ δ.
 
-**This implementation** uses a _conservative update_. When you add n to an item, it first finds the current estimate E (the smallest counter), then increases only the counters that are below E+n, leaving the larger ones unchanged. This keeps the same accuracy guarantee, but the actual error is about 2–2.7 times lower, according to the benchmarks. The tradeoff is that counts can't be decreased.
+**This implementation** uses a _conservative update_. When you add n to an item, it first finds the current estimate E (the smallest counter), then increases only the counters that are below E+n, leaving the larger ones unchanged. This keeps the same accuracy guarantee, but the actual error is several times lower. The tradeoff is that counts can't be decreased.
+
+```
+       ┌───┬───┬─▼─┬───┬───┬───┬───┬───┬───┬───┐
+row 1  │ 0 │ 2 │ 4 │ 0 │ 1 │ 0 │ 0 │ 3 │ 0 │ 1 │  4 → 4
+       ├───┼───┼───┼───┼───┼───┼─▼─┼───┼───┼───┤
+row 2  │ 1 │ 0 │ 0 │ 0 │ 2 │ 0 │ 3 │ 0 │ 1 │ 0 │  3 → 4
+       ├───┼───┼───┼───┼───┼───┼───┼───┼─▼─┼───┤
+row d  │ 0 │ 1 │ 0 │ 2 │ 0 │ 0 │ 1 │ 0 │ 5 │ 0 │  5 → 5
+       └───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
+```
 
 Counters are 32-bit instead of the usual 64-bit, so the sketch uses 2× less memory. The item is hashed once, and each row gets its own position from that hash by salting it (multiplying by a random per-row constant).
+
+```
+        ┌──────┐         ┌─────────┐
+item ──►│ hash │──► h ──►│ × salts │──► i1, i2, ..., id
+        └──────┘         └─────────┘
+```
 
 The sketch uses [wyhash](https://github.com/wangyi-fudan/wyhash) for hashing. It performs roughly the same as [xxh3](https://xxhash.com) but has a much simpler implementation, without SIMD or assembly.
 

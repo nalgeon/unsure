@@ -37,14 +37,63 @@ Hashing is deterministic (wyhash with a fixed seed), so the same items always pr
 
 ## How it works
 
-**Classic Bloom filter**. The filter is a large array of bits, all set to zero at first. To add an item, you compute k hash values for it and set the k bits at those positions. To check if an item is in the filter, you compute the same k hashes and check if all k bits are set:
+**The classic Bloom filter** is a large array of m bits, all set to zero at first. To add an item, you compute k hash values for it and set the k bits at those positions:
+
+```
+        ┌──────┐                       ┌───────┐
+item ──►│ hash │──► h1, h2, ..., hk ──►│ mod m │──► i1, i2, ..., ik
+        └──────┘                       └───────┘
+
+          i1          i2                  ik
+          ▼           ▼                   ▼
+┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┐
+│ 0 │ 0 │ 1 │ 0 │ 0 │ 1 │ 0 │ 0 │ 0 │ 0 │ 1 │ 0 │
+└───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
+  0   1   2                                  m-1
+```
+
+To check if an item is in the filter, you compute the same k hashes and check if all k bits are set:
 
 - If any of the bits is not set, the item definitely was never added.
 - If all the bits are set, the item was probably added, but it's not guaranteed (the bits could have been set by other items).
 
+```
+          i1          i2                  ik
+          ▼           ▼                   ▼
+┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┐
+│ 1 │ 0 │ 1 │ 0 │ 0 │ 1 │ 1 │ 0 │ 1 │ 0 │ 1 │ 0 │  all 1 → probably in the set
+└───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
+
+┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┐
+│ 1 │ 0 │ 1 │ 0 │ 0 │ 0 │ 1 │ 0 │ 1 │ 0 │ 1 │ 0 │  any 0 → definitely not in the set
+└───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
+                      ▲
+```
+
 The k bits are randomly distributed throughout the entire array. When the filter is larger than the CPU cache, each bit access could result in a cache miss, so a lookup may wait on memory k times.
 
 **This implementation** is a _blocked_ Bloom filter. The bit array is divided into 512-bit blocks, each matching the size of a CPU cache line. When you add or check an item, it is hashed once: part of the hash selects a block, and the rest selects k bits within that block. Each add or check only accesses one cache line, so the filter stays fast even when it's very large.
+
+```
+        ┌──────┐         ┌──► high 32 bits ──► block
+item ──►│ hash │──► h ───┤                   ┌─────────┐
+        └──────┘         └──► low 32 bits ──►│ × salts │──► i1, i2, ..., ik
+                                             └─────────┘
+
+          block
+            ▼
+┌───────┬───────┬───────┬───────┬───────┬───────┐
+│   0   │   1   │   2   │   3   │  ...  │  n-1  │
+└───────┴───────┴───────┴───────┴───────┴───────┘
+        │       │
+┌───────┘       └───────────────────────────────┐
+│         i1          i2                  ik    │
+│         ▼           ▼                   ▼     │
+├───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┤
+│ 0 │ 0 │ 1 │ 0 │ 0 │ 1 │ 0 │ 0 │ 0 │ 0 │ 1 │ 0 │
+└───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
+  0   1   2                                  511
+```
 
 A blocked Bloom filter uses more memory than a classic one. Some blocks end up with more items than others, which increases the false positive rate. To make up for this, the filter needs to be a bit larger. Compared to a standard Bloom filter, it uses about 3% more memory at a 1% false positive rate, 8% more at 0.1%, and 15% more at 0.01%. The extra memory needed goes up even more at very low false positive rates (see the package docs for details).
 

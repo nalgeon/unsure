@@ -6,7 +6,7 @@ The `unsure` module implements these structures in Go, with each structure in it
 
 ## Roadmap
 
-- ✓ [Bloom filter](./bloom/README.md): checks if an item is in a set, with occasional false positives.
+- ✓ [Bloom filter](./bloom/README.md): estimates if an item is in a set.
 - ✓ [Count-min sketch](./countmin/README.md): estimates how many times each item has occurred.
 - ✗ HyperLogLog: estimates the number of distinct items.
 - ✗ T-digest: estimates quantiles (like the median or 99th percentile) of a stream of numbers.
