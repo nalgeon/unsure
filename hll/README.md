@@ -44,7 +44,7 @@ home.Count() // visitors to either page
 
 The sketch has one setting: the relative standard error. With `hll.New(0.01)` and 1 million distinct items, about 68% of the time the estimate is within 1% (10,000) of the true count, 95% within 2% (2×stdErr), and 99.7% within 3% (3×stdErr). The error is relative to the count, so it's the same 1% for a thousand items or a billion (and smaller for counts below about 100,000).
 
-The sketch takes 1.08/err² bytes, rounded up to a power of 2: 1 KB for 3.3% error, 16 KB for 0.82% (1% rounds up to that), 256 KB for 0.21% (the smallest supported error). Each 2× lower error costs 4× more memory.
+The sketch takes 1.08/err² bytes, rounded up to a power of 2: 256 bytes for 6.5% error (the smallest sketch; any larger error gives this one), 1 KB for 3.3%, 16 KB for 0.82% (1% rounds up to that), 256 KB for 0.21% (the smallest supported error). Each 2× lower error costs 4× more memory.
 
 Sketches can only be merged if they were created with the same error and seed. Hashing is deterministic (wyhash with a fixed seed), so the same items always produce the same sketch. You can change the seed with `hll.NewWith`. The sketch is not designed for adversarial input: anyone who knows the seed can craft items that inflate the count.
 

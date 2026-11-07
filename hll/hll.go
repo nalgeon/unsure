@@ -9,7 +9,7 @@
 // billions.
 //
 // The sketch has m = 2^p one-byte registers, with p chosen so that the
-// standard error 1.04/√m is at most stdErr (p is between 4 and 18). Each
+// standard error 1.04/√m is at most stdErr (p is between 8 and 18). Each
 // item's hash picks a register and a rank (the number of leading zeros of
 // the rest of the hash, plus one), and the register keeps the largest rank
 // it has seen. Adding an item twice has no effect.
@@ -18,14 +18,15 @@
 // improved estimator by Otmar Ertl ("New cardinality estimation algorithms
 // for HyperLogLog sketches", 2017). Unlike the original HyperLogLog, it doesn't
 // need to switch to linear counting for small cardinalities or use bias tables,
-// and it's unbiased over the whole range. The sketch keeps the histogram up
-// to date as registers change, so [Sketch.Count] doesn't scan the registers.
+// and its bias is negligible over the whole range. The sketch keeps the
+// histogram up to date as registers change, so [Sketch.Count] doesn't scan
+// the registers.
 //
 // Sketches with the same precision and seed can be merged: the result is
 // the same as a single sketch that saw the items of both.
 //
-// The sketch takes 2^p bytes: 1 KB at stdErr = 0.0325 (p=10), 16 KB at
-// 0.0082 (p=14), and 256 KB at 0.0021 (p=18).
+// The sketch takes 2^p bytes: 256 B at stdErr = 0.065 (p=8), 1 KB at
+// 0.0325 (p=10), 16 KB at 0.0082 (p=14), and 256 KB at 0.0021 (p=18).
 //
 // Hashing is deterministic: wyhash final 4.3 with a fixed seed (0 unless set
 // in [Options]), so the same items always produce the same sketch. The sketch
@@ -44,7 +45,10 @@ import (
 
 // Range of precisions (log2 of the number of registers).
 const (
-	minP = 4
+	// Below p=8 the error exceeds 1.04/√m and the bias is a few percent,
+	// while the registers would save at most 240 bytes next to the
+	// 256-byte histogram.
+	minP = 8
 	maxP = 18
 )
 
@@ -134,8 +138,9 @@ func (s *Sketch) Count() uint64 {
 		z = 0.5 * (z + float64(s.hist[k]))
 	}
 	z += m * sigma(float64(s.hist[0])/m)
-	// alphaInf is exact only for large m. With the usual finite-m correction,
-	// the bias is +7% → 0.3% at p=4 and +1.7% → 0.1% at p=6.
+	// alphaInf is exact only for large m. The usual finite-m correction
+	// moves the bias at p=8 from +0.5% to ±0.1% at large n, and from +0.2%
+	// to -0.2% at small n. At p ≥ 10 both are within ±0.1%.
 	alpha := alphaInf / (1 + 1.079/m)
 	est := alpha * m * m / z
 	if est >= math.MaxUint64 {

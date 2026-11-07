@@ -38,8 +38,10 @@ func TestPrecision(t *testing.T) {
 		stdErr float64
 		p      int
 	}{
-		{0.9, 4},
-		{0.26, 4},
+		{0.9, 8},
+		{0.26, 8},
+		{1.04 / 16, 8},
+		{0.0649, 9},
 		{1.04 / 32, 10},
 		{0.0325, 10},
 		{0.0324, 11},
@@ -176,12 +178,12 @@ func TestRank(t *testing.T) {
 }
 
 func TestSaturated(t *testing.T) {
-	s := New(0.26) // p=4
+	s := New(0.9) // p=minP
 	for range 1000 {
-		s.addHash(0) // rank 61 into register 0
+		s.addHash(0) // max rank 65-p into register 0
 	}
 	for i := range s.regs {
-		s.addHash(uint64(i) << 60)
+		s.addHash(uint64(i) << (64 - s.p))
 	}
 	if c := s.Count(); c != math.MaxUint64 {
 		t.Fatalf("all registers saturated: Count = %d, want MaxUint64", c)
@@ -245,7 +247,7 @@ func TestMerge(t *testing.T) {
 // max on random registers, including 0 and the maximum value 65-p.
 func TestMergeRegisters(t *testing.T) {
 	r := rand.New(rand.NewPCG(3, 4))
-	for _, p := range []int{minP, 6, 10, maxP} {
+	for _, p := range []int{minP, 10, maxP} {
 		m := 1 << p
 		stdErr := 1.04 / math.Sqrt(float64(m))
 		maxR := 65 - p
@@ -347,7 +349,7 @@ func TestAccuracy(t *testing.T) {
 	if testing.Short() {
 		trials = 50
 	}
-	for _, p := range []int{6, 10, 14} {
+	for _, p := range []int{minP, 10, 14} {
 		m := 1 << p
 		stdErr := 1.04 / math.Sqrt(float64(m))
 		var points []int

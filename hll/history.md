@@ -38,3 +38,9 @@ Merge same / disjoint, ns/op at p = 10 / 14 / 18 (Add, Count, RMSE, size unchang
 | 125 / 1.9k / 30.1k | 730 / 20.1k / 341k  |
 
 vs old Merge: same 3.1× faster at all p; disjoint 1.2× / 3.1× / 3.0× (old: 0.90k / 62k / 1.03M). vs axiom: same −76%, disjoint −57% / −66% / −64% (axiom 1.71k / 58.6k / 951k; old Merge was +6% / +8% slower than axiom at p=14/18 in this case). At p=10 the histogram updates take about half of the disjoint time (350 ns without them): updates to the same few bins form a dependency chain.
+
+## 3. minP 4 → 8
+
+Measured with 10k trials (random hashes): below p=8 the docs' "RMSE at most stdErr, unbiased for any n" was false. RMSE at large n: p=4 27–28.5% vs 26.0% (1.04–1.09×), p=5 1.02–1.04×, p=6 1.01–1.02×, p=7 ≈1.00×, p=8 0.99×. The α∞/(1+1.079/m) correction is a constant factor (−6.3% at p=4), but the α∞ bias isn't constant (p=4: +3.4% at n ≤ 8, +7.3% at large n), so it fixes large n (+0.5%, not 0.3% as in entry 1) and flips small n to −3.1%. p=6: +0.9% → −0.8% small n, +1.7% → ±0.1% large n. p=8: +0.2% → −0.2%, +0.5% → ±0.1%.
+
+Design: minP = 8 instead of tuning an n-dependent correction. Registers below p=8 saved at most 240 bytes next to the fixed 256-byte histogram, and precision() already clamps, so New(stdErr > 0.065) just gets p=8 (256 B). Correction kept (halves the bias at p=8). TestAccuracy now runs p=8/10/14. Add/Count/Merge, RMSE and size at p=14 unchanged.
