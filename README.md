@@ -8,9 +8,11 @@ The `unsure` module implements these structures in Go, with each structure in it
 
 - ✓ [Bloom filter](./bloom/README.md): estimates if an item is in a set.
 - ✓ [Count-min sketch](./countmin/README.md): estimates how many times each item has occurred.
-- ✗ HyperLogLog: estimates the number of distinct items.
+- ✓ [HyperLogLog](./hll/README.md): estimates the number of distinct items.
 - ✗ T-digest: estimates quantiles (like the median or 99th percentile) of a stream of numbers.
 - ✗ Top-K: finds the most frequent items in a stream.
+
+All data structures use the local [wyhash](https://github.com/wangyi-fudan/wyhash) implementation for hashing. It performs roughly the same as [xxh3](https://github.com/Cyan4973/xxHash) but has a much simpler implementation, without SIMD or assembly.
 
 ## Contributing
 

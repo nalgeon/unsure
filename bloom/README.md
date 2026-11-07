@@ -97,7 +97,7 @@ item ──►│ hash │──► h ───┤                   ┌──�
 
 A blocked Bloom filter uses more memory than a classic one. Some blocks end up with more items than others, which increases the false positive rate. To make up for this, the filter needs to be a bit larger. Compared to a standard Bloom filter, it uses about 3% more memory at a 1% false positive rate, 8% more at 0.1%, and 15% more at 0.01%. The extra memory needed goes up even more at very low false positive rates (see the package docs for details).
 
-The filter uses [wyhash](https://github.com/wangyi-fudan/wyhash) for hashing. It performs roughly the same as [xxh3](https://xxhash.com) but has a much simpler implementation, without SIMD or assembly.
+The filter uses [wyhash](https://github.com/wangyi-fudan/wyhash) for hashing.
 
 ## Benchmarks
 

@@ -100,7 +100,7 @@ item ──►│ hash │──► h ──►│ × salts │──► i1, i2,
         └──────┘         └─────────┘
 ```
 
-The sketch uses [wyhash](https://github.com/wangyi-fudan/wyhash) for hashing. It performs roughly the same as [xxh3](https://xxhash.com) but has a much simpler implementation, without SIMD or assembly.
+The sketch uses [wyhash](https://github.com/wangyi-fudan/wyhash) for hashing.
 
 ## Benchmarks
 
