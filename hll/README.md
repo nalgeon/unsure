@@ -44,7 +44,7 @@ home.Count() // visitors to either page
 
 The sketch has one setting: the relative standard error. With `hll.New(0.01)` and 1 million distinct items, about 68% of the time the estimate is within 1% (10,000) of the true count, 95% within 2% (2×stdErr), and 99.7% within 3% (3×stdErr). The error is relative to the count, so it's the same 1% for a thousand items or a billion (and smaller for counts below about 100,000).
 
-The sketch takes 1.08/err² bytes, rounded up to a power of 2: 256 bytes for 6.5% error (the smallest sketch; any larger error gives this one), 1 KB for 3.3%, 16 KB for 0.82% (1% rounds up to that), 256 KB for 0.21% (the smallest supported error). Each 2× lower error costs 4× more memory.
+The sketch takes 1.08/err² bytes, rounded up to a power of 2: 256 bytes for 6.5% error (the smallest sketch; any larger error gives this one), 1 KB for 3.3%, 16 KB for 0.82% (1% rounds up to that), 256 KB for 0.21% (the smallest supported error), plus a fixed 256 bytes for the histogram (see below). Each 2× lower error costs 4× more memory.
 
 Sketches can only be merged if they were created with the same error and seed. Hashing is deterministic (wyhash with a fixed seed), so the same items always produce the same sketch. You can change the seed with `hll.NewWith`. The sketch is not designed for adversarial input: anyone who knows the seed can craft items that inflate the count.
 
@@ -73,7 +73,7 @@ The original estimator is biased when dealing with small counts (up to a few tim
 
 The sketch updates the histogram whenever registers change. Most adds don't change any registers, so this is almost free. Counting always takes the same amount of time, no matter how big the sketch is. Other implementations scan all the registers on every count, which takes from microseconds to milliseconds.
 
-Registers are one byte each. The item is hashed once with [wyhash](https://github.com/wangyi-fudan/wyhash), and the 64-bit hash is split into the register index and the rank.
+Registers are one byte each, and the histogram has 64 four-byte counters (256 bytes). The item is hashed once with [wyhash](https://github.com/wangyi-fudan/wyhash), and the 64-bit hash is split into the register index and the rank.
 
 ## Benchmarks
 
@@ -101,10 +101,21 @@ Accuracy at p=14 (0.81% standard error), relative RMSE over 100 sketches (lower 
 | 40,000         | **0.64%** |     0.71% |       50.8% |
 | 1,000,000      | **0.79%** |     0.89% |        9.9% |
 
-_axiomhq_ is nearly exact below ~16,000 items thanks to its sparse mode, which also makes it much smaller for small counts (1.2 KB instead of 16 KB at 100 items). Above that, both are equally accurate. _BoomFilters_ is far off (up to 50%) around 20,000–40,000 items.
+_axiomhq_ is nearly exact below ~16,000 items thanks to its sparse mode. Above that, both are equally accurate. _BoomFilters_ is far off (up to 50%) around 20,000–40,000 items.
+
+Memory at p=14 after adding the given number of distinct items (lower is better):
+
+| Distinct items | unsure |      axiom | BoomFilters |
+| -------------- | -----: | ---------: | ----------: |
+| 100            |  16 KB | **1.2 KB** |       16 KB |
+| 1,000          |  16 KB | **4.2 KB** |       16 KB |
+| 10,000         |  16 KB |      16 KB |       16 KB |
+| 1,000,000      |  16 KB |      16 KB |       16 KB |
+
+_unsure_ and _BoomFilters_ allocate all the registers up front, so their size doesn't depend on the number of items. _axiomhq_ starts in sparse mode, keeping the hashes in a compressed list, and switches to registers once the list would outgrow them (between 3,000 and 10,000 items at p=14). The gap is larger for bigger sketches: at p=18, where the registers take 256 KB, _axiomhq_ takes 8.2 KB at 1,000 items, 40 KB at 10,000, and 208 KB at 100,000.
 
 The `Count` gap comes from how the estimate is computed. _axiomhq_ and _BoomFilters_ scan all the registers on every count, computing 2^-register with `math.Pow` for each one (about 20 ns per register), so their `Count` grows with the sketch size. _unsure_ keeps a histogram of register values up to date as registers change, and `Count` loops over its 64 entries regardless of the sketch size. The cost of keeping the histogram moves to `Add`, which updates it only when a register grows (often while the sketch fills up, rarely after).
 
-Overall, _unsure_ adds about as fast as _axiomhq_ (27% faster when the sketch fits in L1, 3% slower at 256 KB), counts 270–83,000× faster, and merges 2.3–2.9× faster, with the same accuracy for counts above the number of registers.
+Overall, _unsure_ adds about as fast as _axiomhq_ (27% faster when the sketch fits in L1, 3% slower at 256 KB), counts 270–83,000× faster, and merges 2.3–2.9× faster, with the same accuracy and memory for counts above the number of registers. When there are fewer items than registers, _axiomhq_'s sparse mode makes it more accurate and compact.
 
 To reproduce, run `make hll-bench-full` and `make hll-accuracy` from the repository root.

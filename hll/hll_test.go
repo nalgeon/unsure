@@ -59,7 +59,7 @@ func TestPrecision(t *testing.T) {
 			continue
 		}
 		s := New(tt.stdErr)
-		if int(s.p) != tt.p || len(s.regs) != 1<<tt.p || s.Size() != 1<<tt.p {
+		if int(s.p) != tt.p || len(s.regs) != 1<<tt.p || s.Size() != 1<<tt.p+256 {
 			t.Errorf("New(%g): p = %d, %d registers, size %d, want p = %d",
 				tt.stdErr, s.p, len(s.regs), s.Size(), tt.p)
 		}
@@ -349,7 +349,7 @@ func TestAccuracy(t *testing.T) {
 	if testing.Short() {
 		trials = 50
 	}
-	for _, p := range []int{minP, 10, 14} {
+	for _, p := range []int{minP, 10, 14, maxP} {
 		m := 1 << p
 		stdErr := 1.04 / math.Sqrt(float64(m))
 		var points []int

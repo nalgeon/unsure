@@ -52,7 +52,7 @@ func ExampleSketch_Merge() {
 
 func ExampleSketch_Size() {
 	sketch := hll.New(0.01)
-	fmt.Printf("%d KB\n", sketch.Size()/1024)
+	fmt.Println(sketch.Size(), "bytes") // 16 KB of registers + 256 B of histogram
 	// Output:
-	// 16 KB
+	// 16640 bytes
 }

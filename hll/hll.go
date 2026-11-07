@@ -25,8 +25,9 @@
 // Sketches with the same precision and seed can be merged: the result is
 // the same as a single sketch that saw the items of both.
 //
-// The sketch takes 2^p bytes: 256 B at stdErr = 0.065 (p=8), 1 KB at
+// The registers take 2^p bytes: 256 B at stdErr = 0.065 (p=8), 1 KB at
 // 0.0325 (p=10), 16 KB at 0.0082 (p=14), and 256 KB at 0.0021 (p=18).
+// The histogram adds a fixed 256 bytes.
 //
 // Hashing is deterministic: wyhash final 4.3 with a fixed seed (0 unless set
 // in [Options]), so the same items always produce the same sketch. The sketch
@@ -189,9 +190,10 @@ func (s *Sketch) Merge(other *Sketch) error {
 	return nil
 }
 
-// Size returns the memory used by the sketch's registers, in bytes.
+// Size returns the memory used by the sketch's registers and histogram,
+// in bytes.
 func (s *Sketch) Size() int {
-	return len(s.regs)
+	return len(s.regs) + 4*len(s.hist)
 }
 
 // precision returns the smallest p >= minP with 1.04/√(2^p) <= stdErr.

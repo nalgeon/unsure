@@ -139,7 +139,7 @@ func TestHLLAccuracy(t *testing.T) {
 // after adding n distinct items.
 func TestHLLSize(t *testing.T) {
 	for _, p := range []int{10, 14, 18} {
-		for _, n := range []int{100, 10_000, 1_000_000} {
+		for _, n := range []int{100, 1_000, 10_000, 100_000, 1_000_000} {
 			line := fmt.Sprintf("p=%d n=%d:", p, n)
 			sizes := make(map[string]int)
 			for _, im := range hllImpls {
