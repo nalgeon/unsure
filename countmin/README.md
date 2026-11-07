@@ -127,3 +127,9 @@ Accuracy at ε=0.0001, N=10M additions over 1M distinct items, mean overestimate
 Overall, unsure is about 2.5× faster than BoomFilters (up to 5× for Count), using 2× less memory with 2–2.7× lower error.
 
 To reproduce, run `make countmin-bench-full` and `make countmin-accuracy` from the repository root.
+
+## Papers
+
+[An improved data stream summary: the count-min sketch and its applications](https://doi.org/10.1016/j.jalgor.2003.12.001) (Graham Cormode, S. Muthukrishnan, 2005): the classic count-min sketch.
+
+[New directions in traffic measurement and accounting](https://doi.org/10.1145/633025.633056) (Cristian Estan, George Varghese, 2002): conservative update.

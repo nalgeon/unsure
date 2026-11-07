@@ -126,3 +126,9 @@ Memory, bits per item at 10M items (lower is better):
 Overall, unsure is about 4× faster than bits-and-blooms and 2× faster than gloom, using 1–8% more memory than bits-and-blooms and 4–10% less than gloom.
 
 To reproduce, run `make bloom-bench-full` and `make bloom-size` from the repository root.
+
+## Papers
+
+[Space/time trade-offs in hash coding with allowable errors](https://doi.org/10.1145/362686.362692) (Burton H. Bloom, 1970): the classic Bloom filter.
+
+[Cache-, hash-, and space-efficient Bloom filters](https://doi.org/10.1145/1498698.1594230) (Felix Putze, Peter Sanders, Johannes Singler, 2009): blocked Bloom filters and their false positive rate.

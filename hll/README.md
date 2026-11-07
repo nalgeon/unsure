@@ -130,3 +130,11 @@ The `Count` gap comes from how the estimate is computed. _axiomhq_ and _BoomFilt
 Overall, _unsure_ adds about as fast as _axiomhq_ (27% faster when the sketch fits in L1, 3% slower at 256 KB), counts 270–83,000× faster, and merges 2.3–2.9× faster, with the same accuracy and memory for counts above the number of registers. When there are fewer items than registers, _axiomhq_'s sparse mode makes it more accurate and compact.
 
 To reproduce, run `make hll-bench-full` and `make hll-accuracy` from the repository root.
+
+## Papers
+
+[HyperLogLog: the analysis of a near-optimal cardinality estimation algorithm](https://doi.org/10.46298/dmtcs.3545) (Philippe Flajolet, Éric Fusy, Olivier Gandouet, Frédéric Meunier, 2007): the classic HyperLogLog.
+
+[HyperLogLog in practice](https://doi.org/10.1145/2452376.2452456) (Stefan Heule, Marc Nunkesser, Alexander Hall, 2013): HyperLogLog++ with bias correction tables.
+
+[New cardinality estimation algorithms for HyperLogLog sketches](https://arxiv.org/abs/1702.01284) (Otmar Ertl, 2017): the improved estimator used here.
