@@ -84,8 +84,8 @@ type Digest struct {
 	total float64
 	// Exact minimum and maximum of all values, ±Inf if empty.
 	min, max float64
-	// Increment in asin(2q-1) per unit of k: 2π/δ.
-	step float64
+	// Cosine and sine of 2π/δ, the increment in asin(2q-1) per unit of k.
+	cos, sin float64
 	// Whether the next flush merges in descending order.
 	desc bool
 }
@@ -111,7 +111,8 @@ func NewCompression(delta int) *Digest {
 		buf:       make([]float64, 0, bufFactor*delta),
 		min:       math.Inf(1),
 		max:       math.Inf(-1),
-		step:      2 * math.Pi / float64(delta),
+		cos:       math.Cos(2 * math.Pi / float64(delta)),
+		sin:       math.Sin(2 * math.Pi / float64(delta)),
 	}
 }
 
@@ -362,7 +363,7 @@ func (d *Digest) flush() {
 // compressor returns a compressor for the merge pass
 // that writes to d's scratch space.
 func (d *Digest) compressor(total float64) compressor {
-	return compressor{out: d.tmp[:0], total: total, step: d.step}
+	return compressor{out: d.tmp[:0], total: total, cos: d.cos, sin: d.sin}
 }
 
 // finish replaces the centroids with the compressor's output
@@ -387,7 +388,8 @@ func (d *Digest) finish(c *compressor) {
 type compressor struct {
 	out   []centroid
 	total float64 // total weight of all items
-	step  float64 // 2π/δ
+	// Cosine and sine of 2π/δ.
+	cos, sin float64
 	// The current centroid: weight w, and the sum of (mean-base) × weight
 	// over its items, where base is the mean of its first item. Summing
 	// offsets from base keeps the sum precise when the values are large
@@ -414,13 +416,16 @@ func (c *compressor) add(mean, weight float64) {
 func (c *compressor) next(mean, weight float64) {
 	c.flush()
 	c.base, c.sum, c.w = mean, 0, weight
-	// q = before/total, so the centroid ends at q(k(q)+1),
-	// with k scaled to asin(2q-1) and q(k) = (sin(k)+1)/2.
-	a := math.Asin(min(2*c.before/c.total-1, 1)) + c.step
-	if a >= math.Pi/2 {
-		c.limit = c.total
+	// The centroid starts at q = before/total and ends at q(k(q)+1).
+	// With k scaled to a = asin(2q-1), q(a) = (sin(a)+1)/2, the end is
+	// (sin(a+s)+1)/2 for s = 2π/δ, or 1 once a+s reaches π/2. Expanding
+	// sin(a+s) = sin(a)·cos(s) + cos(a)·sin(s), where sin(a) = 2q-1 and
+	// cos(a) = 2·√(q(1-q)), avoids asin and sin. Multiplied by total:
+	b, t := c.before, c.total
+	if 2*b-t >= c.cos*t {
+		c.limit = t
 	} else {
-		c.limit = c.total * (math.Sin(a) + 1) / 2
+		c.limit = (t+(2*b-t)*c.cos)/2 + math.Sqrt(b*(t-b))*c.sin
 	}
 }
 

@@ -24,3 +24,13 @@ Design: centroids {mean, weight float64} in two fixed arrays of δ+2 (current + 
 | 48 / 52 / 62 | 11.2 / 13.1 / 15.4 | 913 / 1.7k / 8.3k | 0.007 / 0.018 / 0.011% | 0.055 / 0.023 / 0.006% | 8.5 KB |
 
 vs influx: Add −38..−41% (sorting 5δ floats instead of re-sorting buffer + centroids with `sort.Sort`), Quantile −0..−12%, CDF −3%, same single-digest accuracy, −41% memory, merged digests correct. Merge 11× slower: it compresses on every call, and the asin/sin per output centroid dominates (~25 ns × ~60 centroids at δ=100), while influx defers to its buffer. Error scales ~1/δ² in the tails and ~1/δ^1.3 at the median (δ=10: 0.7% / 0.9%; δ=1000: 0.003% / 0.001%). k1 is weak at q ≤ 1e-4: the outermost centroid (~500 values at n=1M) is larger than the rank.
+
+## 2. Scale function limit without asin/sin
+
+The centroid limit (sin(asin(2q-1) + 2π/δ) + 1)/2 expanded as sin(a+s) = sin(a)·cos(s) + cos(a)·sin(s), with sin(a) = 2q-1, cos(a) = 2√(q(1-q)), and cos(s), sin(s) precomputed: one sqrt per output centroid instead of asin + sin. Exact rewrite, accuracy unchanged to the digit.
+
+| Add          | Quantile           | Merge            | Single                 | Merged                 | Size   |
+| ------------ | ------------------ | ---------------- | ---------------------- | ---------------------- | ------ |
+| 45 / 50 / 60 | 11.2 / 13.1 / 15.5 | 319 / 818 / 3.6k | 0.007 / 0.018 / 0.011% | 0.055 / 0.023 / 0.006% | 8.5 KB |
+
+Merge 2.1–2.9× faster (vs influx: 11× → 4–6× slower), Add −2..−6%.
