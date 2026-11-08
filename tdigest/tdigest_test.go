@@ -268,6 +268,27 @@ func TestMinMax(t *testing.T) {
 	}
 }
 
+// TestRankNextToMinMax checks that ranks right next to the
+// min and max (q = 1/n and 1-1/n) are not NaN.
+func TestRankNextToMinMax(t *testing.T) {
+	for _, delta := range []int{10, 20, 50, 100, 200, 500} {
+		for n := 2; n <= 20_000; n = n*11/10 + 1 {
+			for seed := range uint64(5) {
+				r := rand.New(rand.NewPCG(seed, uint64(n)))
+				d := NewCompression(delta)
+				for range n {
+					d.Add(r.NormFloat64())
+				}
+				for _, q := range []float64{1 / float64(n), 1 - 1/float64(n)} {
+					if v := d.Quantile(q); math.IsNaN(v) {
+						t.Fatalf("δ=%d n=%d seed=%d: Quantile(%v) = NaN", delta, n, seed, q)
+					}
+				}
+			}
+		}
+	}
+}
+
 func TestDuplicates(t *testing.T) {
 	d := New()
 	for range 10_000 {

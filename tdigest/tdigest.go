@@ -155,7 +155,10 @@ func (d *Digest) Quantile(q float64) float64 {
 	if idx < 1 {
 		return d.min
 	}
-	if idx > total-1 {
+	// The rank total-1 maps to the max, as the tail interpolation below
+	// does for a last centroid of weight 1 or > 2. With weight 2 it would
+	// divide 0 by 0.
+	if idx >= total-1 {
 		return d.max
 	}
 	// A centroid's values are spread around its mean, so half of its
