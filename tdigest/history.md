@@ -47,10 +47,4 @@ Numbers from `make tdigest-bench-full`. Merge −5 / −21 / −21%, Add −1..�
 
 ## 4. Radix sort for the buffer
 
-The buffer holds sortable uint64 keys (float bits with the sign bit set for positives, all bits flipped for negatives; negating a value flips all bits of its key, so descending flushes need no separate pass). Flush sorts them with an LSD radix sort: one histogram pass for all 8 bytes, then one scatter pass per byte, skipping bytes that are the same in all keys, back and forth between the buffer and a 5δ scratch array. Keys are converted back to floats in the merge pass. Sorting was ~80% of Add: pdqsort mispredicts most branches on fresh random data (isolated benchmarks that re-sort the same values hide this). Accuracy unchanged to the digit.
-
-| Add          | Quantile           | Merge            | Single                 | Merged                 | Size    |
-| ------------ | ------------------ | ---------------- | ---------------------- | ---------------------- | ------- |
-| 24 / 22 / 20 | 11.2 / 13.1 / 15.8 | 297 / 633 / 2.7k | 0.007 / 0.018 / 0.011% | 0.055 / 0.023 / 0.006% | 12.5 KB |
-
-Numbers from `make tdigest-bench-full`. Add −45 / −55 / −66% (vs influx: 3.3 / 4.0 / 5.3× faster), now nearly flat in δ, since radix sort is linear. Memory +4 KB at δ=100 for the scratch array (still below influx's 14.4 KB; at δ=500 60.2 vs 58.8 KB). Tried a 3δ buffer to keep memory flat (9.8 KB, Add 28 / 24 / 21): single-digest error up to 2× worse (normal q=0.1 9e-5 → 1.8e-4), failed the 1.5× check vs influx; kept 5δ.
+Tried and rejected (commit b335931). Add 24 / 22 / 20 ns (−45..−66%), accuracy unchanged, but the 5δ uint64 scratch array is +4 KB at δ=100 (8.5 → 12.5 KB, above influx at δ=500). A 3δ buffer to keep memory flat made single-digest error up to 2× worse. A shared sync.Pool for the scratch kept both speed and size, but isn't worth the complexity for now.
