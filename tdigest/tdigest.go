@@ -397,14 +397,14 @@ type compressor struct {
 	base, sum, w float64
 	// Total weight of the centroids in out.
 	before float64
-	// Max weight of out plus the current centroid.
-	limit float64
+	// Max weight of the current centroid.
+	cap float64
 }
 
 // add adds an item to the current centroid, or starts a new one
 // if it doesn't fit.
 func (c *compressor) add(mean, weight float64) {
-	if c.before+c.w+weight <= c.limit {
+	if c.w+weight <= c.cap {
 		c.sum += (mean - c.base) * weight
 		c.w += weight
 		return
@@ -422,11 +422,11 @@ func (c *compressor) next(mean, weight float64) {
 	// sin(a+s) = sin(a)·cos(s) + cos(a)·sin(s), where sin(a) = 2q-1 and
 	// cos(a) = 2·√(q(1-q)), avoids asin and sin. Multiplied by total:
 	b, t := c.before, c.total
-	if 2*b-t >= c.cos*t {
-		c.limit = t
-	} else {
-		c.limit = (t+(2*b-t)*c.cos)/2 + math.Sqrt(b*(t-b))*c.sin
+	limit := t
+	if 2*b-t < c.cos*t {
+		limit = (t+(2*b-t)*c.cos)/2 + math.Sqrt(b*(t-b))*c.sin
 	}
+	c.cap = limit - b
 }
 
 // flush appends the current centroid (if any) to out.

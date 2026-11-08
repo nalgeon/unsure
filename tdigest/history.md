@@ -34,3 +34,13 @@ The centroid limit (sin(asin(2q-1) + 2π/δ) + 1)/2 expanded as sin(a+s) = sin(a
 | 45 / 50 / 60 | 11.2 / 13.1 / 15.5 | 319 / 818 / 3.6k | 0.007 / 0.018 / 0.011% | 0.055 / 0.023 / 0.006% | 8.5 KB |
 
 Merge 2.1–2.9× faster (vs influx: 11× → 4–6× slower), Add −2..−6%.
+
+## 3. Simpler compressor check
+
+The compressor keeps the current centroid's max weight (cap = limit − before) and checks `w+weight <= cap` instead of `before+w+weight <= limit`. Accuracy unchanged to the digit.
+
+| Add          | Quantile           | Merge            | Single                 | Merged                 | Size   |
+| ------------ | ------------------ | ---------------- | ---------------------- | ---------------------- | ------ |
+| 43 / 48 / 58 | 11.0 / 13.1 / 15.5 | 296 / 637 / 2.7k | 0.007 / 0.018 / 0.011% | 0.055 / 0.023 / 0.006% | 8.5 KB |
+
+Numbers from `make tdigest-bench-full`. Merge −5 / −21 / −21% (vs influx: 3.5–4.4× slower), Add −1..−2%. Tried and rejected: inlining `add` (fits the budget with a `rem` field instead of `w`) made Merge 1.7–2.2× slower; a branchless pick in the merge loop (CSET) made it 45–65% slower, since `add` isn't inlined, so i/j round-trip through the stack and each load waits on the previous compare; building `cum` in the compressor instead of `finish` gave +9 / −12 / 0% (noise, plus a reverse pass for descending flushes).
