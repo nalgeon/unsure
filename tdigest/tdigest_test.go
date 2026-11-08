@@ -126,7 +126,7 @@ func TestNew(t *testing.T) {
 	}
 	for _, delta := range []int{minDelta, 100, 1000, maxDelta} {
 		d := NewCompression(delta)
-		want := 16*2*(delta+2) + 8*(delta+3) + 8*bufFactor*delta
+		want := 16*2*(delta+2) + 8*(delta+3) + 8*2*bufFactor*delta
 		if d.Size() != want {
 			t.Errorf("NewCompression(%d): size %d, want %d", delta, d.Size(), want)
 		}
@@ -270,6 +270,54 @@ func TestMinMax(t *testing.T) {
 
 // TestRankNextToMinMax checks that ranks right next to the
 // min and max (q = 1/n and 1-1/n) are not NaN.
+// TestRadixSort checks radixSort against slices.Sort, including
+// both flip modes, ±0, duplicates and all exponents.
+func TestRadixSort(t *testing.T) {
+	r := rand.New(rand.NewPCG(1, 1))
+	for it := range 1000 {
+		n := 1 + r.IntN(3000)
+		xs := make([]float64, n)
+		for i := range xs {
+			switch it % 4 {
+			case 0:
+				xs[i] = r.NormFloat64()
+			case 1: // random bits with any finite exponent
+				xs[i] = math.Float64frombits(r.Uint64()&^(0x7ff<<52) | uint64(r.IntN(0x7ff))<<52)
+			case 2: // few distinct values, ±0
+				xs[i] = float64(r.IntN(5) - 2)
+				if r.IntN(3) == 0 {
+					xs[i] = math.Copysign(0, -1)
+				}
+			case 3: // large offset, same high bytes
+				xs[i] = 1e12 + r.Float64()
+			}
+		}
+		flip := uint64(0)
+		if it%2 == 1 {
+			flip = ^uint64(0)
+			for i := range xs {
+				xs[i] = -xs[i]
+			}
+		}
+		keys := make([]uint64, n)
+		for i, x := range xs {
+			keys[i] = key(x)
+		}
+		if flip != 0 {
+			for i := range xs {
+				xs[i] = -xs[i]
+			}
+		}
+		slices.Sort(xs)
+		got := radixSort(keys, make([]uint64, n), flip)
+		for i, k := range got {
+			if v := value(k); v != xs[i] {
+				t.Fatalf("it=%d n=%d: [%d] = %v, want %v", it, n, i, v, xs[i])
+			}
+		}
+	}
+}
+
 func TestRankNextToMinMax(t *testing.T) {
 	for _, delta := range []int{10, 20, 50, 100, 200, 500} {
 		for n := 2; n <= 20_000; n = n*11/10 + 1 {

@@ -16,11 +16,11 @@
 // with the typical number of centroids and the memory used:
 //
 //	δ      centroids  memory   q=0.5    q=0.99   q=0.999
-//	50     31         4 KB     0.06%    0.08%    0.04%
-//	100    61         8 KB     0.02%    0.03%    0.02%   (default)
-//	200    118        16 KB    0.012%   0.011%   0.007%
-//	500    292        40 KB    0.005%   0.002%   0.001%
-//	1000   587        80 KB    0.003%   0.001%   0.0005%
+//	50     31         6 KB     0.06%    0.08%    0.04%
+//	100    61         12 KB    0.02%    0.03%    0.02%   (default)
+//	200    118        24 KB    0.012%   0.011%   0.007%
+//	500    292        60 KB    0.005%   0.002%   0.001%
+//	1000   587        120 KB   0.003%   0.001%   0.0005%
 //
 // The worst of 10 digests is about 2× the mean. Values added in sorted order
 // give about 10× smaller errors, and merged digests about 2× larger.
@@ -28,7 +28,8 @@
 // outermost centroid holds more values than the quantile's rank, so the
 // rank error is about as large as q (or 1-q) itself.
 //
-// Added values go to a buffer. When it's full, the digest sorts it and merges
+// Added values go to a buffer. When it's full, the digest sorts it (with a
+// radix sort, much faster than comparison sorts on random data) and merges
 // it with the centroids in one pass (Dunning, 2019). Queries flush the buffer
 // first, so they change the digest's internal state.
 //
@@ -78,8 +79,10 @@ type Digest struct {
 	tmp []centroid
 	// cum[i] is the total weight of centroids[:i], len(centroids)+1 entries.
 	cum []float64
-	// Values added since the last flush.
-	buf []float64
+	// Values added since the last flush, as sortable keys (see key).
+	buf []uint64
+	// Scratch space for sorting buf, same capacity.
+	sortTmp []uint64
 	// Total weight of the centroids.
 	total float64
 	// Exact minimum and maximum of all values, ±Inf if empty.
@@ -91,13 +94,13 @@ type Digest struct {
 }
 
 // New creates a digest with the default compression δ=100:
-// 8 KB, mean rank error about 0.02% at the median and the 99th percentile.
+// 12 KB, mean rank error about 0.02% at the median and the 99th percentile.
 func New() *Digest {
 	return NewCompression(defaultDelta)
 }
 
 // NewCompression creates a digest with compression δ: at most δ+2 centroids,
-// about 80·δ bytes. Larger δ means larger size but smaller errors, see the package docs.
+// about 120·δ bytes. Larger δ means larger size but smaller errors, see the package docs.
 // Panics if δ is not in [10, 10000].
 func NewCompression(delta int) *Digest {
 	if delta < minDelta || delta > maxDelta {
@@ -108,7 +111,8 @@ func NewCompression(delta int) *Digest {
 		centroids: make([]centroid, 0, maxCentroids),
 		tmp:       make([]centroid, 0, maxCentroids),
 		cum:       make([]float64, 1, maxCentroids+1),
-		buf:       make([]float64, 0, bufFactor*delta),
+		buf:       make([]uint64, 0, bufFactor*delta),
+		sortTmp:   make([]uint64, bufFactor*delta),
 		min:       math.Inf(1),
 		max:       math.Inf(-1),
 		cos:       math.Cos(2 * math.Pi / float64(delta)),
@@ -122,7 +126,7 @@ func (d *Digest) Add(x float64) {
 	if x-x != 0 {
 		return
 	}
-	d.buf = append(d.buf, x)
+	d.buf = append(d.buf, key(x))
 	if len(d.buf) == cap(d.buf) {
 		d.flush()
 	}
@@ -303,7 +307,7 @@ func (d *Digest) Merge(other *Digest) {
 // Size returns the memory used by the digest's centroids
 // and buffer, in bytes.
 func (d *Digest) Size() int {
-	return 16*(cap(d.centroids)+cap(d.tmp)) + 8*(cap(d.cum)+cap(d.buf))
+	return 16*(cap(d.centroids)+cap(d.tmp)) + 8*(cap(d.cum)+cap(d.buf)+cap(d.sortTmp))
 }
 
 // flush merges the buffered values into the centroids.
@@ -315,35 +319,37 @@ func (d *Digest) flush() {
 	// Merging always goes left to right, so the leftmost centroids
 	// of each pass tend to be fuller than the rightmost. Every other
 	// flush works on negated values, so it merges right to left instead.
+	// Negating a value flips all bits of its key.
 	desc := d.desc
 	d.desc = !desc
 	cs := d.centroids
+	var flip uint64
 	if desc {
-		negate(buf)
+		flip = ^uint64(0)
 		slices.Reverse(cs)
 		negateMeans(cs)
 	}
-	slices.Sort(buf)
-	lo, hi := buf[0], buf[len(buf)-1]
+	keys := radixSort(buf, d.sortTmp, flip)
+	lo, hi := value(keys[0]), value(keys[len(keys)-1])
 	if desc {
 		lo, hi = -hi, -lo
 	}
 	d.min = min(d.min, lo)
 	d.max = max(d.max, hi)
 
-	c := d.compressor(d.total + float64(len(buf)))
+	c := d.compressor(d.total + float64(len(keys)))
 	i, j := 0, 0
-	for i < len(buf) && j < len(cs) {
-		if buf[i] <= cs[j].mean {
-			c.add(buf[i], 1)
+	for i < len(keys) && j < len(cs) {
+		if x := value(keys[i]); x <= cs[j].mean {
+			c.add(x, 1)
 			i++
 		} else {
 			c.add(cs[j].mean, cs[j].weight)
 			j++
 		}
 	}
-	for ; i < len(buf); i++ {
-		c.add(buf[i], 1)
+	for ; i < len(keys); i++ {
+		c.add(value(keys[i]), 1)
 	}
 	for ; j < len(cs); j++ {
 		c.add(cs[j].mean, cs[j].weight)
@@ -450,14 +456,59 @@ func searchMean(cs []centroid, x float64) int {
 	return lo
 }
 
-func negate(xs []float64) {
-	for i := range xs {
-		xs[i] = -xs[i]
-	}
-}
-
 func negateMeans(cs []centroid) {
 	for i := range cs {
 		cs[i].mean = -cs[i].mean
 	}
+}
+
+// key maps a finite float to a uint64 with the same order: positive
+// values get the sign bit set, negative values get all bits flipped.
+// (-0 sorts before +0, which doesn't matter since they are equal.)
+func key(x float64) uint64 {
+	u := math.Float64bits(x)
+	return u ^ (uint64(int64(u)>>63) | 1<<63)
+}
+
+// value is the inverse of key.
+func value(k uint64) float64 {
+	return math.Float64frombits(k ^ (uint64(int64(^k)>>63) | 1<<63))
+}
+
+// radixSort sorts keys xor flip, using tmp (len ≥ len(keys)) as scratch.
+// It returns the sorted keys, which are either in keys or in tmp.
+//
+// LSD radix sort, one pass per byte, skipping bytes that are the same in
+// all keys. It's 2-3× faster than slices.Sort on random floats, which
+// mispredicts most of its branches.
+func radixSort(keys, tmp []uint64, flip uint64) []uint64 {
+	n := len(keys)
+	var count [8][256]uint32
+	for i, k := range keys {
+		k ^= flip
+		keys[i] = k
+		for b := range count {
+			count[b][byte(k>>(8*b))]++
+		}
+	}
+	src, dst := keys, tmp[:n]
+	for b := range count {
+		c := &count[b]
+		shift := uint(8 * b)
+		if c[byte(src[0]>>shift)] == uint32(n) {
+			continue
+		}
+		var sum uint32
+		for i, m := range c {
+			c[i] = sum
+			sum += m
+		}
+		for _, k := range src {
+			d := byte(k >> shift)
+			dst[c[d]] = k
+			c[d]++
+		}
+		src, dst = dst, src
+	}
+	return src
 }

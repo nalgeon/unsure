@@ -29,7 +29,7 @@ func ExampleNewCompression() {
 	digest.Add(2)
 	fmt.Println(digest.Count(), digest.Size())
 	// Output:
-	// 2 40088
+	// 2 60088
 }
 
 func ExampleDigest_Merge() {
@@ -50,7 +50,7 @@ func ExampleDigest_Merge() {
 
 func ExampleDigest_Size() {
 	digest := tdigest.New()
-	fmt.Println(digest.Size(), "bytes") // centroids + buffer
+	fmt.Println(digest.Size(), "bytes") // centroids + buffer + sort scratch
 	// Output:
-	// 8088 bytes
+	// 12088 bytes
 }
