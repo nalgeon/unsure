@@ -65,9 +65,9 @@ func TestBloomSize(t *testing.T) {
 }
 
 // TestBloomVsMap compares the memory used by a Filter and a map-based set
-// holding 100K 8-byte strings (the example from the bloom README).
+// holding 1M 8-byte strings (the example from the bloom README).
 func TestBloomVsMap(t *testing.T) {
-	const n = 100_000
+	const n = 1_000_000
 	const p = 0.01
 	_, setBytes := retained(func() map[string]struct{} {
 		set := make(map[string]struct{})

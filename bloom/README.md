@@ -6,7 +6,7 @@ A simple and fast Bloom filter implemented in Go.
 
 A Bloom filter is a set that trades certainty for space. It can tell you that an item is _definitely not_ in the set, or that it _probably is_ (which might be a false positive). The filter doesn't actually store the items, so it's much more compact than a regular set.
 
-For example, a regular set (`map[string]struct{}`) with 100,000 distinct 8-byte strings takes about 4.3 MB. A Bloom filter for the same strings, with a 1% false positive rate, uses only 0.13 MB (about 10 bits per item) — that's 30 times smaller. The size of the filter doesn't depend on the item size, so the difference gets even bigger with longer strings.
+For example, a regular set (`map[string]struct{}`) with 1,000,000 distinct 8-byte strings takes about 64 MB. A Bloom filter for the same strings, with a 1% false positive rate, uses only 1.24 MB (about 10 bits per item) — that's 50 times smaller. The size of the filter doesn't depend on the item size, so the difference gets even bigger with longer strings.
 
 A Bloom filter often resides in memory and helps minimize expensive I/O operations such as disk reads or network calls. You check if an item is in the filter, and if the answer is "no", you skip the costly lookup. If the answer is "yes", you still have to perform the lookup because it might be a false positive.
 
