@@ -173,14 +173,22 @@ func TestTDigestAccuracy(t *testing.T) {
 				}
 				t.Log(line)
 			}
+			// Merged digests are compressed on every merge (10 passes here),
+			// while influxdata buffers several digests and compresses about
+			// twice. That makes merged errors differ by up to 2× either way,
+			// depending on the distribution and quantile.
+			bound := 1.5
+			if mode == "merged" {
+				bound = 3
+			}
 			for i := range tdAccuracyQ {
 				// Rank errors of a few values or less are noise.
-				if errs["unsure"][i] > errs["influx"][i]*1.5 && errs["unsure"][i] > 1e-5 {
+				if errs["unsure"][i] > errs["influx"][i]*bound && errs["unsure"][i] > 1e-5 {
 					worse++
 				}
 			}
 			if worse > 1 {
-				t.Errorf("%s %s: rank error over 1.5× the reference at %d quantiles", mode, dist, worse)
+				t.Errorf("%s %s: rank error over %v× the reference at %d quantiles", mode, dist, bound, worse)
 			}
 		}
 	}

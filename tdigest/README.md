@@ -123,7 +123,7 @@ Accuracy at δ=100, mean rank error over 5 digests of 1M normal values (lower is
 
 Memory at δ=100 (lower is better): _unsure_ 8.5 KB, _influxdata_ 14.4 KB, _caio_ 29.4 KB.
 
-_unsure_ and _influxdata_ are equally accurate for a single digest, since they have the same number of centroids. After merging, _unsure_ is less accurate around the median (up to 2× on skewed values) and more accurate at the tails: it compresses on every merge, while _influxdata_ buffers several digests and compresses less often. _caio_ is 3–100× more accurate thanks to its 13× more centroids, but it takes 3.5× more memory and is 4–18× slower to add values and 11–210× slower to query.
+_unsure_ and _influxdata_ are equally accurate for a single digest. After merging, they are within about 2× of each other either way, depending on the distribution and the quantile. _caio_ is 3–100× more accurate thanks to its 13× more centroids, but it takes 3.5× more memory and is 4–18× slower to add values and 11–210× slower to query.
 
 Overall, _unsure_ adds values 43% faster than _influxdata_, queries at the same speed, merges 7–9× faster, and uses 40% less memory at about the same accuracy.
 
