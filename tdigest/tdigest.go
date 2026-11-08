@@ -224,12 +224,6 @@ func (d *Digest) CDF(x float64) float64 {
 		return 1
 	}
 	total := d.total
-	if n == 1 {
-		if d.max == d.min {
-			return 0.5
-		}
-		return (x - d.min) / (d.max - d.min)
-	}
 	// Tails: interpolate between the min/max (a single value) and the
 	// first/last centroid's center. A centroid of weight 1 is at the
 	// min/max itself, so x is not in the tail.
