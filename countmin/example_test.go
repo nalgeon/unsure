@@ -10,9 +10,9 @@ func Example() {
 	// Estimates within 0.1% of the total count, with 99% probability.
 	sketch := countmin.New(0.001, 0.01)
 
-	sketch.Add([]byte("alice"), 1)
-	sketch.Add([]byte("bob"), 1)
-	sketch.Add([]byte("alice"), 2)
+	sketch.Add([]byte("alice"))
+	sketch.Add([]byte("bob"))
+	sketch.AddN([]byte("alice"), 2)
 
 	fmt.Println(sketch.Count([]byte("alice")))
 	fmt.Println(sketch.Count([]byte("bob")))

@@ -14,15 +14,15 @@ import (
 // cmSketch is the common interface for our Sketch and the other implementations,
 // so the same tests and benchmarks run against all of them.
 type cmSketch interface {
-	Add(item []byte, n uint32)
+	Add(item []byte)
 	Count(item []byte) uint32
 }
 
 // boomCM adapts github.com/tylertreat/BoomFilters to the cmSketch interface.
 type boomCM struct{ s *boom.CountMinSketch }
 
-func (s boomCM) Add(item []byte, n uint32) { s.s.AddN(item, uint64(n)) }
-func (s boomCM) Count(item []byte) uint32  { return uint32(min(s.s.Count(item), 1<<32-1)) }
+func (s boomCM) Add(item []byte)          { s.s.Add(item) }
+func (s boomCM) Count(item []byte) uint32 { return uint32(min(s.s.Count(item), 1<<32-1)) }
 
 type cmImpl struct {
 	name string
@@ -93,7 +93,7 @@ func TestCountMinAccuracy(t *testing.T) {
 				for _, im := range cmImpls {
 					s, bytes := allocated(func() cmSketch { return im.new(eps, delta) })
 					for _, id := range st.events {
-						s.Add(st.keys[id], 1)
+						s.Add(st.keys[id])
 					}
 					var errs []uint32
 					sum := 0.0
@@ -143,7 +143,7 @@ func TestCountMinVsMap(t *testing.T) {
 		var buf [8]byte
 		for i := range n {
 			binary.LittleEndian.PutUint64(buf[:], uint64(i))
-			sketch.Add(buf[:], 1)
+			sketch.Add(buf[:])
 		}
 		return sketch
 	})
@@ -176,11 +176,11 @@ func BenchmarkCountMinAdd(b *testing.B) {
 				// Touch the counters, so the timed loop doesn't pay for page
 				// faults on first write.
 				for _, k := range makeKeys(3, cmBenchKeys) {
-					s.Add(k, 1)
+					s.Add(k)
 				}
 				i := 0
 				for b.Loop() {
-					s.Add(keys[i], 1)
+					s.Add(keys[i])
 					i++
 					if i == len(keys) {
 						i = 0
@@ -200,7 +200,7 @@ func BenchmarkCountMinCount(b *testing.B) {
 			b.Run(fmt.Sprintf("eps=%g/impl=%s", eps, im.name), func(b *testing.B) {
 				s := im.new(eps, cmBenchDelta)
 				for _, k := range keys {
-					s.Add(k, 1)
+					s.Add(k)
 				}
 				i := 0
 				for b.Loop() {

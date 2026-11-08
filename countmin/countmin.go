@@ -9,7 +9,7 @@
 //
 // The sketch uses d = ⌈ln(1/delta)⌉ rows, each with w = ⌈e/epsilon⌉ uint32
 // counters. Each item maps to one counter in each row, and its estimate is
-// the smallest value among them. The Add method uses a conservative update:
+// the smallest value among them. Add and AddN use a conservative update:
 // it only increases the item's counters that are below the new estimate.
 // This keeps the same accuracy guarantee, but for skewed data, the actual
 // error is much lower than with regular increments. The tradeoff is that
@@ -54,7 +54,7 @@ var salts = [maxDepth]uint64{
 // Sketch is a count-min sketch: Count may overestimate (by more than
 // epsilon*Total with probability at most delta), but never underestimates.
 //
-// Sketch is not safe for concurrent use if any goroutine calls Add.
+// Sketch is not safe for concurrent use if any goroutine calls Add or AddN.
 type Sketch struct {
 	counters []uint32 // d rows of width counters, row i at [i*width, (i+1)*width)
 	width    uint64
@@ -93,8 +93,13 @@ func New(epsilon, delta float64) *Sketch {
 	}
 }
 
-// Add adds n to the item's count.
-func (s *Sketch) Add(item []byte, n uint32) {
+// Add adds 1 to the item's count.
+func (s *Sketch) Add(item []byte) {
+	s.AddN(item, 1)
+}
+
+// AddN adds n to the item's count.
+func (s *Sketch) AddN(item []byte, n uint32) {
 	h := wyhash.Hash(item, wyhash.Seed0)
 	var idx [maxDepth]uint64
 	est := uint32(math.MaxUint32)

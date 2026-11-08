@@ -59,7 +59,7 @@ func makeStream(s float64, u, n int) *stream {
 
 func (st *stream) fill(s *Sketch) {
 	for _, id := range st.events {
-		s.Add(st.keys[id], 1)
+		s.Add(st.keys[id])
 	}
 }
 
@@ -135,7 +135,7 @@ func TestSingleItem(t *testing.T) {
 	s := New(0.01, 0.01)
 	k := []byte("alice")
 	for i := range uint32(10) {
-		s.Add(k, i)
+		s.AddN(k, i)
 	}
 	if c := s.Count(k); c != 45 {
 		t.Fatalf("Count = %d, want 45", c)
@@ -156,7 +156,7 @@ func TestEdgeKeys(t *testing.T) {
 	}
 	s := New(0.001, 0.01)
 	for i, k := range keys {
-		s.Add(k, uint32(i+1))
+		s.AddN(k, uint32(i+1))
 	}
 	for i, k := range keys {
 		if c := s.Count(k); c < uint32(i+1) {
@@ -172,12 +172,12 @@ func TestEdgeKeys(t *testing.T) {
 func TestSaturation(t *testing.T) {
 	s := New(0.01, 0.01)
 	k := []byte("alice")
-	s.Add(k, math.MaxUint32-1)
-	s.Add(k, 5)
+	s.AddN(k, math.MaxUint32-1)
+	s.AddN(k, 5)
 	if c := s.Count(k); c != math.MaxUint32 {
 		t.Fatalf("Count = %d, want %d", c, uint32(math.MaxUint32))
 	}
-	s.Add(k, math.MaxUint32)
+	s.AddN(k, math.MaxUint32)
 	if c := s.Count(k); c != math.MaxUint32 {
 		t.Fatalf("Count = %d, want %d", c, uint32(math.MaxUint32))
 	}
@@ -314,8 +314,11 @@ func TestRowsIndependent(t *testing.T) {
 func TestNoAllocs(t *testing.T) {
 	s := New(0.001, 0.01)
 	key := []byte("alice")
-	if n := testing.AllocsPerRun(100, func() { s.Add(key, 1) }); n != 0 {
+	if n := testing.AllocsPerRun(100, func() { s.Add(key) }); n != 0 {
 		t.Errorf("Add allocates %v times, want 0", n)
+	}
+	if n := testing.AllocsPerRun(100, func() { s.AddN(key, 2) }); n != 0 {
+		t.Errorf("AddN allocates %v times, want 0", n)
 	}
 	if n := testing.AllocsPerRun(100, func() { s.Count(key) }); n != 0 {
 		t.Errorf("Count allocates %v times, want 0", n)

@@ -26,9 +26,9 @@ import "github.com/nalgeon/unsure/countmin"
 // Estimates within 0.1% of the total count, with 99% probability.
 sketch := countmin.New(0.001, 0.01)
 
-sketch.Add([]byte("alice"), 1)
-sketch.Add([]byte("bob"), 1)
-sketch.Add([]byte("alice"), 2)
+sketch.Add([]byte("alice"))
+sketch.Add([]byte("bob"))
+sketch.AddN([]byte("alice"), 2)
 
 sketch.Count([]byte("alice")) // 3 (or, rarely, more)
 sketch.Count([]byte("bob"))   // 1 (or, rarely, more)
