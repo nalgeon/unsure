@@ -153,9 +153,3 @@ New BenchmarkBloomNew (n=10 / 10k / 1M, p=0.01): 125 / 127 / 178 µs → 28 / 29
 | 8.5 / 9.7 / 38 | 8.0 / 8.8 / 34 | 8.0 / 8.8 / 34 | 4.84 / 9.90 / 15.49 |
 
 Hot path untouched. Benchmarks from `make bloom-bench-full` (`-count 10`). Geomean vs bitsblooms / gloom: 13.7 vs 57.2 / 29.9 ns (4.2× / 2.2× faster). Further options if needed: a faster root finder (~5 calls per k) or a shorter Poisson sum (currently up to load + 12σ).
-
-## 11. Seed removed
-
-API review across bloom/countmin/hll: no compared library (bits-and-blooms, gloom, BoomFilters, axiomhq) or Redis lets users set the seed, and a public seed gives no adversarial protection anyway. Removing it later would break callers, adding it back wouldn't. Removed `Options` and `NewWith`; the filter always hashes with seed 0, premixed once as the constant `wyhash.Seed0`, so `Filter` loses its `seed` field.
-
-Hot path unchanged: BloomAdd n=10k/1M before vs after 11.4 / 9.9 vs 12.3 / 9.7 ns, p=0.82 (noise).
