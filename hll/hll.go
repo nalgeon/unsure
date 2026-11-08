@@ -15,12 +15,11 @@
 // it has seen. Adding an item twice has no effect.
 //
 // The estimate comes from the histogram of register values, using the
-// improved estimator by Otmar Ertl ("New cardinality estimation algorithms
-// for HyperLogLog sketches", 2017). Unlike the original HyperLogLog, it doesn't
-// need to switch to linear counting for small cardinalities or use bias tables,
-// and its bias is negligible over the whole range. The sketch keeps the
-// histogram up to date as registers change, so [Sketch.Count] doesn't scan
-// the registers.
+// improved estimator (Otmar Ertl, 2017). Unlike the original HyperLogLog,
+// it doesn't need to switch to linear counting for small cardinalities or
+// use bias tables, and its bias is negligible over the whole range.
+// The sketch keeps the histogram up to date as registers change, so
+// [Sketch.Count] doesn't scan the registers.
 //
 // Sketches with the same precision can be merged: the result is the same
 // as a single sketch that saw the items of both.

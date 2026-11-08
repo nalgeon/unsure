@@ -36,7 +36,7 @@ sketch.Count([]byte("carol")) // 0 (or, rarely, more)
 sketch.Total()                // 4
 ```
 
-The sketch uses two settings: ε (_epsilon_) and δ (_delta_). If the actual count for any given item is X and the total of all counts is N, then the estimated count for this item will usually be between X and X+ε×N. However, rarely (with a probability of δ) the estimate could be even higher. For example, if ε is 0.001, δ is 0.01, and N is 1 million, then the estimate could be off by up to 1,000 with at least 99% probability, and by more than 1,000 with at most 1% probability.
+The sketch uses two settings: epsilon _ε_ and delta _δ_. If the actual count for any given item is X and the total of all counts is N, then the estimated count for this item will usually be between X and X+ε×N. However, rarely (with a probability of δ) the estimate could be even higher. For example, if ε is 0.001, δ is 0.01, and N is 1 million, then the estimate could be off by up to 1,000 with at least 99% probability, and by more than 1,000 with at most 1% probability.
 
 Choose ε to be smaller than the smallest fraction of N that matters to you. A common choice for δ is 0.01. Making δ even smaller is pretty cheap, since the sketch size only grows with ln(1/δ).
 
@@ -46,7 +46,7 @@ Hashing is deterministic (wyhash with seed 0), so the same items always produce 
 
 ## How it works
 
-**The classic count-min sketch** is a table of counters with d rows and w columns, all starting at zero. Each row uses its own hash function that maps an item to one of the w counters. To add an item, you increment its counter in each row:
+**The count-min sketch** is a table of counters with d rows and w columns, all starting at zero. Each row uses its own hash function that maps an item to one of the w counters. To add an item, you increment its counter in each row:
 
 ```
         ┌──────┐                       ┌───────┐

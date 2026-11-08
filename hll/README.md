@@ -42,7 +42,7 @@ home.Merge(docs)
 home.Count() // visitors to either page
 ```
 
-The sketch has one setting: the precision p, which gives 2^p registers and a relative standard error (stdErr) of 1.04/√(2^p). `hll.New()` uses p=14, a common default, with 0.81% error. With 1 million distinct items, about 68% of the time the estimate is within 0.81% (8,100) of the true count, 95% within 1.6% (2×stdErr), and 99.7% within 2.4% (3×stdErr). The error is relative to the count, so it's the same 0.81% upper bound for a thousand items or a billion.
+The sketch has one setting: the precision _p_, which gives 2^p registers and a relative standard error (stdErr) of 1.04/√(2^p). `hll.New()` uses p=14, a common default, with 0.81% error. With 1 million distinct items, about 68% of the time the estimate is within 0.81% (8,100) of the true count, 95% within 1.6% (2×stdErr), and 99.7% within 2.4% (3×stdErr). The error is relative to the count, so it's the same 0.81% upper bound for a thousand items or a billion.
 
 To trade accuracy for memory, use `hll.NewPrecision(p)` with p from 8 to 18. Each +2 to p halves the error and quadruples the memory:
 
@@ -61,7 +61,7 @@ Sketches can only be merged if they have the same precision. Hashing is determin
 
 ## How it works
 
-**The classic HyperLogLog** is based on a simple observation. If you hash items to random bit strings, about half of them start with 1, a quarter with 01, an eighth with 001, and so on. Seeing a hash with k leading zeros suggests there were about 2^(k+1) distinct items. Duplicates hash the same way, so they don't affect the result.
+**The HyperLogLog** is based on a simple observation. If you hash items to random bit strings, about half of them start with 1, a quarter with 01, an eighth with 001, and so on. Seeing a hash with k leading zeros suggests there were about 2^(k+1) distinct items. Duplicates hash the same way, so they don't affect the result.
 
 One such observation is very noisy, so the sketch splits the items into m = 2^p groups. The first p bits of the hash pick a group (a _register_), and the register keeps the highest _rank_ (leading zeros plus one) it has seen in the rest of the hash:
 
@@ -80,7 +80,7 @@ The count is estimated from all the registers together, using a harmonic mean of
 
 The original estimator is biased when dealing with small counts (up to a few times m), so it uses a different formula called _linear counting_ in those cases. This switch creates a sudden change in error, and some implementations (like HyperLogLog++) address it by using large tables of bias corrections based on real data.
 
-**This implementation** uses the improved estimator by [Otmar Ertl](https://arxiv.org/abs/1702.01284) (also used by Redis). Instead of a harmonic mean of the registers, it works from a _histogram_: how many registers have value 0, value 1, and so on. A formula applied to the histogram gives an accurate estimate for any number of items, from zero to billions, so there's no need for a separate formula for small counts or for correction tables.
+**This implementation** uses the improved estimator by Otmar Ertl (also used by Redis). Instead of a harmonic mean of the registers, it works from a _histogram_: how many registers have value 0, value 1, and so on. A formula applied to the histogram gives an accurate estimate for any number of items, from zero to billions, so there's no need for a separate formula for small counts or for correction tables.
 
 The sketch updates the histogram whenever registers change. Most adds don't change any registers, so this is almost free. Counting always takes the same amount of time, no matter how big the sketch is. Other implementations scan all the registers on every count, which takes from microseconds to milliseconds.
 
