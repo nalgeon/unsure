@@ -36,7 +36,15 @@ type influxTD struct{ d *influx.TDigest }
 func (d influxTD) Add(x float64)              { d.d.Add(x, 1) }
 func (d influxTD) Quantile(q float64) float64 { return d.d.Quantile(q) }
 func (d influxTD) CDF(x float64) float64      { return d.d.CDF(x) }
-func (d influxTD) Merge(other tdDigest)       { d.d.AddCentroidList(other.(influxTD).d.Centroids()) }
+
+// Merge adds the other digest's centroids one by one. AddCentroidList is
+// broken in v0.0.1: once its buffer is exactly full, it silently drops all
+// further centroids until something calls process (a query or a single Add).
+func (d influxTD) Merge(other tdDigest) {
+	for _, c := range other.(influxTD).d.Centroids() {
+		d.d.AddCentroid(c)
+	}
+}
 
 // caioTD adapts github.com/caio/go-tdigest to the tdDigest interface.
 type caioTD struct{ d *caio.TDigest }
@@ -293,7 +301,7 @@ const tdMergeOthers = 8
 // BenchmarkTDigestMerge merges digests of 100K values each into one digest,
 // as when gathering digests from many sources. Each merge adds more values
 // to the receiver, so its centroids keep changing. influxdata merges into
-// a buffer and compresses once it's full, so its cost is amortized.
+// a buffer and compresses (sorting everything) once it's full.
 func BenchmarkTDigestMerge(b *testing.B) {
 	for _, delta := range tdBenchDelta {
 		for _, im := range tdImpls {

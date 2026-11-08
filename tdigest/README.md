@@ -91,24 +91,24 @@ Centroids with weight 1 are treated as exact values rather than spread around th
 
 Compared to [influxdata/tdigest](https://github.com/influxdata/tdigest) (merging t-digest with the same scale function) and [caio/go-tdigest](https://github.com/caio/go-tdigest) (tree-based t-digest). Apple M1, normal values, ns/op (lower is better):
 
-| Operation |   δ | unsure |  influx |      caio |
-| --------- | --: | -----: | ------: | --------: |
-| Add       |  50 | **43** |      77 |       169 |
-|           | 100 | **48** |      86 |       275 |
-|           | 500 | **58** |     104 |     1,020 |
-| Quantile  |  50 | **11** |      13 |       407 |
-|           | 100 | **13** |  **13** |       752 |
-|           | 500 | **15** |  **16** |     3,160 |
-| CDF       |  50 | **31** |  **33** |       351 |
-|           | 100 | **36** |  **38** |       670 |
-|           | 500 | **48** |  **49** |     2,820 |
-| Merge     |  50 |    296 |  **85** |   119,000 |
-|           | 100 |    637 | **146** |   413,000 |
-|           | 500 |  2,730 | **616** | 5,570,000 |
+| Operation |   δ |    unsure | influx |      caio |
+| --------- | --: | --------: | -----: | --------: |
+| Add       |  50 |    **44** |     78 |       172 |
+|           | 100 |    **49** |     86 |       279 |
+|           | 500 |    **59** |    105 |     1,040 |
+| Quantile  |  50 |    **11** |     13 |       414 |
+|           | 100 |    **13** | **13** |       764 |
+|           | 500 |    **15** | **16** |     3,200 |
+| CDF       |  50 |    **31** | **33** |       350 |
+|           | 100 |    **36** | **38** |       669 |
+|           | 500 |    **47** | **49** |     2,820 |
+| Merge     |  50 |   **296** |  2,060 |   119,000 |
+|           | 100 |   **630** |  4,330 |   412,000 |
+|           | 500 | **2,720** | 23,950 | 5,560,000 |
 
 `Add` is measured on a digest that already holds 1M values, and includes the amortized cost of flushing the buffer. `Merge` merges a digest of 100K values into one of 1M or more.
 
-`Merge` in _unsure_ is much slower than in _influxdata_, because _influxdata_ appends the other digest's centroids to its buffer and compresses later, while _unsure_ compresses on every merge.
+_influxdata_'s default merge implementation (`AddCentroidList`) loses data: once its buffer is exactly full, it silently drops all further centroids until something calls a query or adds a single value. So in this benchmark, _influxdata_ merges by adding the other digest's centroids one by one (`AddCentroid`), to keep the logic correct.
 
 Accuracy at δ=100, mean rank error over 5 digests of 1M normal values (lower is better). _Merged_ digests are built by merging 10 digests of 100K values each:
 
@@ -117,15 +117,15 @@ Accuracy at δ=100, mean rank error over 5 digests of 1M normal values (lower is
 | Single | 0.5      | 0.007% | 0.015% | **0.0024%** |
 |        | 0.99     | 0.018% | 0.016% | **0.0004%** |
 |        | 0.999    | 0.011% | 0.009% | **0.0001%** |
-| Merged | 0.5      | 0.055% |   2.2% | **0.0047%** |
-|        | 0.99     | 0.023% | 0.084% | **0.0009%** |
-|        | 0.999    | 0.006% | 0.011% | **0.0001%** |
+| Merged | 0.5      | 0.055% | 0.037% | **0.0047%** |
+|        | 0.99     | 0.023% | 0.021% | **0.0009%** |
+|        | 0.999    | 0.006% | 0.016% | **0.0001%** |
 
 Memory at δ=100 (lower is better): _unsure_ 8.5 KB, _influxdata_ 14.4 KB, _caio_ 29.4 KB.
 
-_unsure_ and _influxdata_ are equally accurate for a single digest, since they have the same number of centroids. _influxdata_ is much less accurate after merging (2.2% at the median, and up to 44% for values added in sorted order). _caio_ is 3–100× more accurate thanks to its 13× more centroids, but it takes 3.5× more memory and is 4–18× slower to add values and 11–210× slower to query.
+_unsure_ and _influxdata_ are equally accurate for a single digest, since they have the same number of centroids. After merging, _unsure_ is less accurate around the median (up to 2× on skewed values) and more accurate at the tails: it compresses on every merge, while _influxdata_ buffers several digests and compresses less often. _caio_ is 3–100× more accurate thanks to its 13× more centroids, but it takes 3.5× more memory and is 4–18× slower to add values and 11–210× slower to query.
 
-Overall, _unsure_ adds values 44–45% faster than _influxdata_, queries at the same speed, merges 3.5–4.5× slower (with much better accuracy), and uses 40% less memory at the same accuracy.
+Overall, _unsure_ adds values 43% faster than _influxdata_, queries at the same speed, merges 7–9× faster, and uses 40% less memory at about the same accuracy.
 
 To reproduce, run `make tdigest-bench-full` and `make tdigest-accuracy` from the repository root.
 
