@@ -1,0 +1,84 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/nalgeon/unsure/bench
+cpu: Apple M1
+BenchmarkTopKAdd/k=10/impl=keiler-8         	 1000000	       146.1 ns/op
+BenchmarkTopKAdd/k=10/impl=keiler-8         	 1000000	       146.8 ns/op
+BenchmarkTopKAdd/k=10/impl=keiler-8         	 1000000	       143.1 ns/op
+BenchmarkTopKAdd/k=10/impl=keiler-8         	 1000000	       149.4 ns/op
+BenchmarkTopKAdd/k=10/impl=keiler-8         	 1000000	       153.3 ns/op
+BenchmarkTopKAdd/k=10/impl=keiler-8         	 1000000	       156.4 ns/op
+BenchmarkTopKAdd/k=10/impl=dgryski-8        	 1000000	       106.6 ns/op
+BenchmarkTopKAdd/k=10/impl=dgryski-8        	 1000000	        96.54 ns/op
+BenchmarkTopKAdd/k=10/impl=dgryski-8        	 1000000	       101.5 ns/op
+BenchmarkTopKAdd/k=10/impl=dgryski-8        	 1000000	       112.9 ns/op
+BenchmarkTopKAdd/k=10/impl=dgryski-8        	 1000000	       100.9 ns/op
+BenchmarkTopKAdd/k=10/impl=dgryski-8        	 1000000	       105.6 ns/op
+BenchmarkTopKAdd/k=100/impl=keiler-8        	 1000000	       173.9 ns/op
+BenchmarkTopKAdd/k=100/impl=keiler-8        	 1000000	       170.2 ns/op
+BenchmarkTopKAdd/k=100/impl=keiler-8        	 1000000	       171.1 ns/op
+BenchmarkTopKAdd/k=100/impl=keiler-8        	 1000000	       173.8 ns/op
+BenchmarkTopKAdd/k=100/impl=keiler-8        	 1000000	       172.9 ns/op
+BenchmarkTopKAdd/k=100/impl=keiler-8        	 1000000	       175.2 ns/op
+BenchmarkTopKAdd/k=100/impl=dgryski-8       	 1000000	       126.6 ns/op
+BenchmarkTopKAdd/k=100/impl=dgryski-8       	 1000000	       127.3 ns/op
+BenchmarkTopKAdd/k=100/impl=dgryski-8       	 1000000	       124.5 ns/op
+BenchmarkTopKAdd/k=100/impl=dgryski-8       	 1000000	       124.9 ns/op
+BenchmarkTopKAdd/k=100/impl=dgryski-8       	 1000000	       129.9 ns/op
+BenchmarkTopKAdd/k=100/impl=dgryski-8       	 1000000	       120.0 ns/op
+BenchmarkTopKAdd/k=1000/impl=keiler-8       	 1000000	       217.7 ns/op
+BenchmarkTopKAdd/k=1000/impl=keiler-8       	 1000000	       222.7 ns/op
+BenchmarkTopKAdd/k=1000/impl=keiler-8       	 1000000	       220.5 ns/op
+BenchmarkTopKAdd/k=1000/impl=keiler-8       	 1000000	       221.0 ns/op
+BenchmarkTopKAdd/k=1000/impl=keiler-8       	 1000000	       224.2 ns/op
+BenchmarkTopKAdd/k=1000/impl=keiler-8       	 1000000	       232.7 ns/op
+BenchmarkTopKAdd/k=1000/impl=dgryski-8      	 1000000	       140.4 ns/op
+BenchmarkTopKAdd/k=1000/impl=dgryski-8      	 1000000	       139.1 ns/op
+BenchmarkTopKAdd/k=1000/impl=dgryski-8      	 1000000	       145.3 ns/op
+BenchmarkTopKAdd/k=1000/impl=dgryski-8      	 1000000	       145.2 ns/op
+BenchmarkTopKAdd/k=1000/impl=dgryski-8      	 1000000	       135.2 ns/op
+BenchmarkTopKAdd/k=1000/impl=dgryski-8      	 1000000	       137.7 ns/op
+PASS
+ok  	github.com/nalgeon/unsure/bench	12.588s
+goos: darwin
+goarch: arm64
+pkg: github.com/nalgeon/unsure/bench
+cpu: Apple M1
+BenchmarkTopKTop/k=10/impl=keiler-8         	 1803222	       661.8 ns/op
+BenchmarkTopKTop/k=10/impl=keiler-8         	 1906095	       627.9 ns/op
+BenchmarkTopKTop/k=10/impl=keiler-8         	 1884463	       635.8 ns/op
+BenchmarkTopKTop/k=10/impl=keiler-8         	 1837809	       650.7 ns/op
+BenchmarkTopKTop/k=10/impl=keiler-8         	 1932886	       617.5 ns/op
+BenchmarkTopKTop/k=10/impl=keiler-8         	 1889030	       634.6 ns/op
+BenchmarkTopKTop/k=10/impl=dgryski-8        	 3949033	       301.5 ns/op
+BenchmarkTopKTop/k=10/impl=dgryski-8        	 3973944	       301.1 ns/op
+BenchmarkTopKTop/k=10/impl=dgryski-8        	 3900552	       303.1 ns/op
+BenchmarkTopKTop/k=10/impl=dgryski-8        	 3833892	       304.1 ns/op
+BenchmarkTopKTop/k=10/impl=dgryski-8        	 3895563	       302.1 ns/op
+BenchmarkTopKTop/k=10/impl=dgryski-8        	 3966801	       300.7 ns/op
+BenchmarkTopKTop/k=100/impl=keiler-8        	   85830	     14170 ns/op
+BenchmarkTopKTop/k=100/impl=keiler-8        	   90562	     13345 ns/op
+BenchmarkTopKTop/k=100/impl=keiler-8        	   90601	     13624 ns/op
+BenchmarkTopKTop/k=100/impl=keiler-8        	   92322	     13131 ns/op
+BenchmarkTopKTop/k=100/impl=keiler-8        	   91873	     13244 ns/op
+BenchmarkTopKTop/k=100/impl=keiler-8        	   96625	     12601 ns/op
+BenchmarkTopKTop/k=100/impl=dgryski-8       	  302314	      3900 ns/op
+BenchmarkTopKTop/k=100/impl=dgryski-8       	  319875	      3886 ns/op
+BenchmarkTopKTop/k=100/impl=dgryski-8       	  285750	      3914 ns/op
+BenchmarkTopKTop/k=100/impl=dgryski-8       	  317938	      3899 ns/op
+BenchmarkTopKTop/k=100/impl=dgryski-8       	  316432	      3883 ns/op
+BenchmarkTopKTop/k=100/impl=dgryski-8       	  319144	      3878 ns/op
+BenchmarkTopKTop/k=1000/impl=keiler-8       	    4470	    267425 ns/op
+BenchmarkTopKTop/k=1000/impl=keiler-8       	    4508	    266653 ns/op
+BenchmarkTopKTop/k=1000/impl=keiler-8       	    4509	    267439 ns/op
+BenchmarkTopKTop/k=1000/impl=keiler-8       	    4521	    268275 ns/op
+BenchmarkTopKTop/k=1000/impl=keiler-8       	    4213	    271904 ns/op
+BenchmarkTopKTop/k=1000/impl=keiler-8       	    4466	    269066 ns/op
+BenchmarkTopKTop/k=1000/impl=dgryski-8      	   16275	     73441 ns/op
+BenchmarkTopKTop/k=1000/impl=dgryski-8      	   16390	     73058 ns/op
+BenchmarkTopKTop/k=1000/impl=dgryski-8      	   16398	     73234 ns/op
+BenchmarkTopKTop/k=1000/impl=dgryski-8      	   16323	     73295 ns/op
+BenchmarkTopKTop/k=1000/impl=dgryski-8      	   16102	     73995 ns/op
+BenchmarkTopKTop/k=1000/impl=dgryski-8      	   16429	     73154 ns/op
+PASS
+ok  	github.com/nalgeon/unsure/bench	50.263s

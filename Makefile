@@ -2,11 +2,13 @@ BLOOM_REF := testdata/bloom-reference.txt
 CM_REF := testdata/countmin-reference.txt
 HLL_REF := testdata/hll-reference.txt
 TD_REF := testdata/tdigest-reference.txt
+TK_REF := testdata/topk-reference.txt
 
 .PHONY: bloom-test bloom-bench bloom-bench-ref bloom-bench-full bloom-size
 .PHONY: countmin-test countmin-bench countmin-bench-ref countmin-bench-full countmin-accuracy
 .PHONY: hll-test hll-bench hll-bench-ref hll-bench-full hll-accuracy
 .PHONY: tdigest-test tdigest-bench tdigest-bench-ref tdigest-bench-full tdigest-accuracy
+.PHONY: topk-test topk-bench topk-bench-ref topk-bench-full topk-accuracy
 
 # Run the tests: our Filter, then the size comparison against other libraries.
 bloom-test:
@@ -104,3 +106,28 @@ tdigest-bench-full:
 # Rank error and memory of our Digest vs the other libraries.
 tdigest-accuracy:
 	@go test -C bench -v -run '^TestTDigest(Accuracy|Size)$$' . | grep -E 'rank err|KB' | sed 's/^.*_test.go:[0-9]*: //'
+
+# Run the tests: our Sketch, then the accuracy comparison against other libraries.
+topk-test:
+	@GOOS=linux GOARCH=386 go vet ./topk
+	@go test ./topk
+	@go test -C bench -run TopK .
+
+# Fast benchmark (median of 3 runs) of our Sketch, compared against the recorded reference results.
+topk-bench:
+	@(go test -C bench -run x -bench 'TopKAdd/.*/impl=unsure' -benchtime 1000000x -count 3 . && \
+	  go test -C bench -run x -bench 'TopKTop/.*/impl=unsure' -benchtime 200ms -count 3 .) | benchstat -col /impl bench/$(TK_REF) -
+
+# Record reference (keilerkonzept, dgryski) results. Rerun on a new machine or Go version.
+topk-bench-ref:
+	@(go test -C bench -run x -bench 'TopKAdd/.*/impl=(keiler|dgryski)' -benchtime 1000000x -count 6 . && \
+	  go test -C bench -run x -bench 'TopKTop/.*/impl=(keiler|dgryski)' -count 6 .) > bench/$(TK_REF)
+
+# Full statistically sound comparison of all implementations (slow, several minutes).
+topk-bench-full:
+	@(go test -C bench -run x -bench 'TopKAdd' -benchtime 1000000x -count 10 . && \
+	  go test -C bench -run x -bench 'TopKTop' -count 10 .) | benchstat -col /impl -
+
+# Precision, count error and memory of our Sketch vs the other libraries.
+topk-accuracy:
+	@go test -C bench -v -run '^TestTopKAccuracy$$' . | grep 'impl=' | sed 's/^.*_test.go:[0-9]*: //'
