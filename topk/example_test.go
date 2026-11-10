@@ -25,8 +25,8 @@ func Example() {
 	// Output:
 	// alice 5
 	// carol 3
-	// 5 true
-	// 0 false
+	// 5
+	// 0
 	// 9
 }
 

@@ -33,8 +33,8 @@ sketch.AddN([]byte("alice"), 4)
 sketch.AddN([]byte("carol"), 2)
 
 sketch.Top()                  // [{alice 5} {carol 3}]
-sketch.Count([]byte("alice")) // 5, true
-sketch.Count([]byte("bob"))   // 0, false (not in the top 2)
+sketch.Count([]byte("alice")) // 5
+sketch.Count([]byte("bob"))   // 0 (not in the top 2)
 sketch.Total()                // 9
 ```
 

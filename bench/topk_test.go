@@ -37,7 +37,7 @@ func (s unsureTK) Top() []tkEntry {
 	top := s.s.Top()
 	res := make([]tkEntry, len(top))
 	for i, e := range top {
-		res[i] = tkEntry{e.Item, e.Count}
+		res[i] = tkEntry{e.Item, uint64(e.Count)}
 	}
 	return res
 }

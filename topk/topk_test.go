@@ -28,7 +28,7 @@ func makeKeys(seed uint64, n int) [][]byte {
 type stream struct {
 	keys   [][]byte
 	events []int32
-	counts []uint64
+	counts []int
 }
 
 // makeStream draws n events from u items with a Zipf distribution
@@ -39,7 +39,7 @@ func makeStream(s float64, u, n int) *stream {
 	st := &stream{
 		keys:   makeKeys(1, u),
 		events: make([]int32, n),
-		counts: make([]uint64, u),
+		counts: make([]int, u),
 	}
 	for i := range st.events {
 		id := int(z.Uint64())
@@ -112,7 +112,7 @@ func TestExact(t *testing.T) {
 	s := New(100)
 	keys := makeKeys(1, 50)
 	for i, k := range keys {
-		s.AddN(k, uint64(i+1))
+		s.AddN(k, i+1)
 		s.Add(k)
 	}
 	checkInvariants(t, s)
@@ -122,29 +122,39 @@ func TestExact(t *testing.T) {
 	}
 	for i, e := range top {
 		id := len(keys) - 1 - i
-		if e.Item != string(keys[id]) || e.Count != uint64(id+2) {
+		if e.Item != string(keys[id]) || e.Count != id+2 {
 			t.Errorf("Top[%d] = (%x, %d), want (%x, %d)", i, e.Item, e.Count, keys[id], id+2)
 		}
 	}
 	for i, k := range keys {
-		if c, ok := s.Count(k); !ok || c != uint64(i+2) {
-			t.Errorf("Count(%d) = %d, %v, want %d, true", i, c, ok, i+2)
+		if c := s.Count(k); c != i+2 {
+			t.Errorf("Count(%d) = %d, want %d", i, c, i+2)
 		}
 	}
-	if c, ok := s.Count([]byte("missing")); ok || c != 0 {
-		t.Errorf("Count(missing) = %d, %v, want 0, false", c, ok)
+	if c := s.Count([]byte("missing")); c != 0 {
+		t.Errorf("Count(missing) = %d, want 0", c)
 	}
-	if want := uint64(50 * 53 / 2); s.Total() != want {
+	if want := 50 * 53 / 2; s.Total() != want {
 		t.Errorf("Total = %d, want %d", s.Total(), want)
 	}
 }
 
-func TestAddZero(t *testing.T) {
-	s := New(10)
-	s.AddN([]byte("a"), 0)
-	if len(s.Top()) != 0 || s.Total() != 0 {
-		t.Errorf("AddN(0) changed the sketch")
-	}
+func TestAddSpecial(t *testing.T) {
+	t.Run("negative", func(t *testing.T) {
+		defer func() {
+			if recover() == nil {
+				t.Errorf("AddN(-1) didn't panic")
+			}
+		}()
+		New(10).AddN([]byte("a"), -1)
+	})
+	t.Run("zero", func(t *testing.T) {
+		s := New(10)
+		s.AddN([]byte("a"), 0)
+		if len(s.Top()) != 0 || s.Total() != 0 {
+			t.Errorf("AddN(0) changed the sketch")
+		}
+	})
 }
 
 func TestTopTies(t *testing.T) {
@@ -190,8 +200,8 @@ func TestZipf(t *testing.T) {
 					if e.Count > true {
 						t.Errorf("Top[%d]: count %d > true count %d", i, e.Count, true)
 					}
-					if c, ok := s.Count([]byte(e.Item)); !ok || c != e.Count {
-						t.Errorf("Count(Top[%d]) = %d, %v, want %d, true", i, c, ok, e.Count)
+					if c := s.Count([]byte(e.Item)); c != e.Count {
+						t.Errorf("Count(Top[%d]) = %d, want %d", i, c, e.Count)
 					}
 					if true >= kth {
 						hits++
@@ -276,7 +286,7 @@ func TestAddNLarge(t *testing.T) {
 	s = New(1)
 	narrow(s)
 	s.AddN(a, 64)
-	s.AddN(b, math.MaxUint64-64)
+	s.AddN(b, math.MaxInt-64)
 	if top := s.Top(); len(top) != 1 || top[0].Item != "a" || top[0].Count != 64 {
 		t.Errorf("Top = %v, want [a 64]", top)
 	}
@@ -300,30 +310,74 @@ func TestReplace(t *testing.T) {
 	// shorter ones reuse it.
 	s := New(1)
 	for i, item := range []string{"aa", "bbbb", "c"} {
-		s.AddN([]byte(item), uint64(i+1)*10)
+		s.AddN([]byte(item), (i+1)*10)
 		checkInvariants(t, s)
 		if top := s.Top(); len(top) != 1 || top[0].Item != item {
 			t.Fatalf("Top = %v, want [%s]", top, item)
 		}
 	}
-	if c, ok := s.Count([]byte("bbbb")); ok {
-		t.Errorf("Count(evicted) = %d, true", c)
+	if c := s.Count([]byte("bbbb")); c != 0 {
+		t.Errorf("Count(evicted) = %d, want 0", c)
 	}
 }
 
-func TestAddAllocs(t *testing.T) {
-	st := makeStream(1.1, 10_000, 100_000)
-	s := New(100)
-	for _, id := range st.events {
-		s.Add(st.keys[id])
+func TestNoAllocs(t *testing.T) {
+	// Add and AddN only allocate when an item enters the top k
+	// with a longer item than the one it replaces.
+	const k = 1000
+	const runs = 1000
+	s := New(k)
+	keys := makeKeys(1, k+2*runs) // all 16 bytes
+	// Fill the heap with counts of k, so new items replace existing ones.
+	for _, key := range keys[:k] {
+		s.AddN(key, k)
 	}
-	i := 0
-	allocs := testing.AllocsPerRun(10_000, func() {
-		s.Add(st.keys[st.events[i]])
-		i++
-	})
-	if allocs > 0 {
-		t.Errorf("Add allocates %.2f times per call", allocs)
+
+	// Each new item has a larger count than any in the heap,
+	// so it replaces the minimum and reuses its buffer.
+	// The table is wide, so new items almost always own a bucket.
+	// Not every item gets in, and AllocsPerRun truncates the average,
+	// so do all replacements in one run to count every allocation.
+	i := k
+	replace := func() {
+		for range runs {
+			s.AddN(keys[i], i+1)
+			i++
+		}
+	}
+	if n := testing.AllocsPerRun(1, replace); n != 0 {
+		t.Errorf("AddN (replace) allocates %v times in %d calls, want 0", n, runs)
+	}
+	replaced := 0
+	for _, key := range keys[k+runs:] {
+		if s.Count(key) > 0 {
+			replaced++
+		}
+	}
+	if replaced < runs*9/10 {
+		t.Fatalf("only %d of %d items entered the top k", replaced, runs)
+	}
+
+	top := []byte(s.Top()[0].Item)
+	if n := testing.AllocsPerRun(runs, func() { s.Add(top) }); n != 0 {
+		t.Errorf("Add (in top k) allocates %v times, want 0", n)
+	}
+	// A new item. 100 events keep it below the heap minimum (at least k).
+	miss := makeKeys(2, 1)[0]
+	if n := testing.AllocsPerRun(100, func() { s.Add(miss) }); n != 0 {
+		t.Errorf("Add (not in top k) allocates %v times, want 0", n)
+	}
+	if s.Count(miss) != 0 {
+		t.Errorf("Count(miss) = %d, want 0", s.Count(miss))
+	}
+	if n := testing.AllocsPerRun(runs, func() { s.Count(top) }); n != 0 {
+		t.Errorf("Count allocates %v times, want 0", n)
+	}
+	if n := testing.AllocsPerRun(runs, func() { s.Total() }); n != 0 {
+		t.Errorf("Total allocates %v times, want 0", n)
+	}
+	if n := testing.AllocsPerRun(runs, func() { s.Size() }); n != 0 {
+		t.Errorf("Size allocates %v times, want 0", n)
 	}
 }
 

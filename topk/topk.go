@@ -63,12 +63,13 @@ var salts = [2]uint64{0x6ca123e582c49bc7, 0xd9f3b4a63fd8553b}
 // Entry is a frequent item with its estimated count.
 type Entry struct {
 	Item  string
-	Count uint64
+	Count int
 }
 
 // Sketch finds the most frequent items in a stream.
 //
-// Allocates memory at creation and never grows or shrinks.
+// The table and heap are allocated at creation. Add and AddN only allocate
+// to copy an item when it enters the top k.
 // Not safe for concurrent use.
 type Sketch struct {
 	k       int
@@ -129,14 +130,23 @@ func New(k int) *Sketch {
 
 // Add adds 1 to the item's count.
 func (s *Sketch) Add(item []byte) {
-	s.AddN(item, 1)
+	s.add(item, 1)
 }
 
 // AddN adds n to the item's count.
-func (s *Sketch) AddN(item []byte, n uint64) {
-	if n == 0 {
+// Panics if n is negative.
+func (s *Sketch) AddN(item []byte, n int) {
+	if n <= 0 {
+		if n < 0 {
+			panic("topk: n must not be negative")
+		}
 		return
 	}
+	s.add(item, uint64(n))
+}
+
+// add adds n > 0 to the item's count.
+func (s *Sketch) add(item []byte, n uint64) {
 	s.total += n
 	h := wyhash.Hash(item, wyhash.Seed0)
 	fp := uint32(h >> 32)
@@ -209,7 +219,10 @@ func (s *Sketch) AddN(item []byte, n uint64) {
 func (s *Sketch) Top() []Entry {
 	entries := make([]Entry, len(s.heap))
 	for i, nd := range s.heap {
-		entries[i] = Entry{Item: string(s.slots[nd.slot].item), Count: nd.count}
+		entries[i] = Entry{
+			Item:  string(s.slots[nd.slot].item),
+			Count: toInt(nd.count),
+		}
 	}
 	slices.SortFunc(entries, func(a, b Entry) int {
 		if c := cmp.Compare(b.Count, a.Count); c != 0 {
@@ -220,23 +233,22 @@ func (s *Sketch) Top() []Entry {
 	return entries
 }
 
-// Count returns the estimated count of the item and true if the item
-// is among the top k. Returns 0 and false otherwise.
-func (s *Sketch) Count(item []byte) (uint64, bool) {
+// Count returns the estimated count of the item if it's among the top k,
+// or 0 otherwise. Counts of the top k items are always at least 1.
+func (s *Sketch) Count(item []byte) int {
 	i, ok := s.index[wyhash.Hash(item, wyhash.Seed0)]
 	if !ok {
-		return 0, false
+		return 0
 	}
-	return s.heap[s.slots[i].pos].count, true
+	return toInt(s.heap[s.slots[i].pos].count)
 }
 
 // Total returns the sum of all counts added.
-func (s *Sketch) Total() uint64 {
-	return s.total
+func (s *Sketch) Total() int {
+	return toInt(s.total)
 }
 
-// Size returns the approximate memory used by the sketch's data, in bytes:
-// the buckets, the heap, the top items and their hash index.
+// Size returns the approximate memory used by the sketch's data, in bytes.
 func (s *Sketch) Size() int {
 	const bucketSize = 8
 	const nodeSize = 16         // count + slot, padded
@@ -329,4 +341,10 @@ func (s *Sketch) down(pos uint32) {
 	}
 	h[pos] = nd
 	s.slots[nd.slot].pos = pos
+}
+
+// toInt converts a count to int, capped at [math.MaxInt]
+// (matters only on 32-bit platforms).
+func toInt(n uint64) int {
+	return int(min(n, math.MaxInt))
 }
