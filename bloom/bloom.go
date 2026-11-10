@@ -12,10 +12,10 @@
 // the CPU cache. k is chosen to minimize memory for the given fpProb.
 //
 // The tradeoff is memory at low false positive rates. Some blocks get more
-// items than average, and at low rates most false positives come from them,
-// so the filter has to keep the average lower. Down to fpProb = 1e-4, it
-// uses at most ~15% more memory than a standard Bloom filter. Below that,
-// the overhead grows: +34% at 1e-6, +70% at 1e-8.
+// items than average, which increases the false positive rate, so the filter
+// has to be larger to compensate. Down to fpProb = 1e-4, it uses at most
+// ~15% more memory than a standard Bloom filter. Below that, the overhead
+// grows: +34% at 1e-6, +70% at 1e-8.
 //
 // To choose n, use the largest number of items you expect. Adding more
 // still works, but the false positive rate grows quickly: with fpProb = 0.01,
@@ -24,10 +24,9 @@
 // rate costs about 5–6 more bits per item. The filter takes about 4.8 bits per
 // item at fpProb = 0.1, 9.9 bits at 0.01, and 15.5 bits at 0.001.
 //
-// Hashing is deterministic: wyhash final 4.3 with seed 0, so the same items
-// always produce the same filter. The filter is not designed for adversarially
-// chosen items: anyone who knows the seed (or crafts keys that cancel it out)
-// can produce false positives at will.
+// The filter is deterministic, so the same items always produce the same filter.
+// The filter is not designed for adversarially chosen items: anyone who knows the
+// seed (or crafts keys that cancel it out) can artificially increase false positives.
 package bloom
 
 import (
@@ -53,10 +52,10 @@ var salts = [maxK]uint32{
 }
 
 // Filter is a probabilistic set: Contains may report false positives
-// (with probability around fpProb once n items are added),
 // but never false negatives.
 //
-// Filter is not safe for concurrent use if any goroutine calls Add.
+// Allocates memory at creation and never grows or shrinks.
+// Not safe for concurrent use.
 type Filter struct {
 	blocks []block
 	salts  []uint32 // salts[:k]
@@ -64,7 +63,9 @@ type Filter struct {
 
 // New creates a filter for n items with the target false positive
 // probability fpProb.
-// Panics if n is negative or fpProb is not in (0, 1).
+//
+// Panics if n is negative, fpProb is not in (0, 1), or the filter
+// would be too large.
 func New(n int, fpProb float64) *Filter {
 	if n < 0 {
 		panic("bloom: n must not be negative")
@@ -104,8 +105,10 @@ func (f *Filter) Add(item []byte) {
 	}
 }
 
-// Contains reports whether the item may be in the filter.
-// False means the item is definitely not in the filter.
+// Contains estimates whether the item is in the filter.
+// False means the item is definitely not in the filter, true means
+// it's probably in the filter, with probability of a false positive
+// about fpProb (see [New]).
 func (f *Filter) Contains(item []byte) bool {
 	h := wyhash.Hash(item, wyhash.Seed0)
 	b := &f.blocks[(h>>32)*uint64(len(f.blocks))>>32]

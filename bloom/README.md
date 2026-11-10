@@ -6,7 +6,7 @@ A simple and fast Bloom filter implemented in Go.
 
 A Bloom filter is a set that trades certainty for space. It can tell you that an item is _definitely not_ in the set, or that it _probably is_ (which might be a false positive). The filter doesn't actually store the items, so it's much more compact than a regular set.
 
-For example, a regular set (`map[string]struct{}`) with 1,000,000 distinct 8-byte strings takes about 64 MB. A Bloom filter for the same strings, with a 1% false positive rate, uses only 1.24 MB (about 10 bits per item) — that's 50 times smaller. The size of the filter doesn't depend on the item size, so the difference gets even bigger with longer strings.
+For example, a regular set with 1,000,000 distinct 8-byte strings takes about 64 MB. A Bloom filter for the same strings, with a 1% false positive rate, uses only 1.24 MB (about 10 bits per item) — that's 50 times smaller. The size of the filter doesn't depend on the item size, so the difference gets even bigger with longer strings.
 
 A Bloom filter often resides in memory and helps minimize expensive I/O operations such as disk reads or network calls. You check if an item is in the filter, and if the answer is "no", you skip the costly lookup. If the answer is "yes", you still have to perform the lookup because it might be a false positive.
 
@@ -33,7 +33,8 @@ filter.Contains([]byte("carol")) // false (or, rarely, true)
 
 The filter is sized for the given number of items with a given false positive rate. You can add more, but the false positive rate will go up.
 
-Hashing is deterministic (wyhash with seed 0), so the same items always produce the same filter. The filter is not designed for adversarial input: don't rely on it if an attacker could benefit from false positives.
+The filter is deterministic, so the same items always produce the same filter. The filter is not designed for adversarial input: anyone who knows the seed (or crafts keys that cancel it out)
+can artificially increase false positives.
 
 ## How it works
 
@@ -45,8 +46,7 @@ item ──►│ hash │──► h1, h2, ..., hk ──►│ mod m │──
         └──────┘                       └───────┘
 
           i1          i2                  ik
-          ▼           ▼                   ▼
-┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┐
+┌───┬───┬─▼─┬───┬───┬─▼─┬───┬───┬───┬───┬─▼─┬───┐
 │ 0 │ 0 │ 1 │ 0 │ 0 │ 1 │ 0 │ 0 │ 0 │ 0 │ 1 │ 0 │
 └───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
   0   1   2                                  m-1
@@ -59,15 +59,14 @@ To check if an item is in the filter, you compute the same k hashes and check if
 
 ```
           i1          i2                  ik
-          ▼           ▼                   ▼
-┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┐
+┌───┬───┬─▼─┬───┬───┬─▼─┬───┬───┬───┬───┬─▼─┬───┐
 │ 1 │ 0 │ 1 │ 0 │ 0 │ 1 │ 1 │ 0 │ 1 │ 0 │ 1 │ 0 │  all 1 → probably in the set
 └───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
 
 ┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┐
 │ 1 │ 0 │ 1 │ 0 │ 0 │ 0 │ 1 │ 0 │ 1 │ 0 │ 1 │ 0 │  any 0 → definitely not in the set
-└───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
-                      ▲
+└───┴───┴───┴───┴───┴─▲─┴───┴───┴───┴───┴───┴───┘
+                     (!)
 ```
 
 The k bits are randomly distributed throughout the entire array. When the filter is larger than the CPU cache, each bit access could result in a cache miss, so a lookup may wait on memory k times.
@@ -81,21 +80,19 @@ item ──►│ hash │──► h ───┤                   ┌──�
                                              └─────────┘
 
           block
-            ▼
-┌───────┬───────┬───────┬───────┬───────┬───────┐
+┌───────┬───▼───┬───────┬───────┬───────┬───────┐
 │   0   │   1   │   2   │   3   │  ...  │  n-1  │
 └───────┴───────┴───────┴───────┴───────┴───────┘
         │       │
 ┌───────┘       └───────────────────────────────┐
 │         i1          i2                  ik    │
-│         ▼           ▼                   ▼     │
-├───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┤
+├───┬───┬─▼─┬───┬───┬─▼─┬───┬───┬───┬───┬─▼─┬───┤
 │ 0 │ 0 │ 1 │ 0 │ 0 │ 1 │ 0 │ 0 │ 0 │ 0 │ 1 │ 0 │
 └───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
   0   1   2                                  511
 ```
 
-A blocked Bloom filter uses more memory than a classic one. Some blocks end up with more items than others, which increases the false positive rate. To make up for this, the filter needs to be a bit larger. Compared to a standard Bloom filter, it uses about 3% more memory at a 1% false positive rate, 8% more at 0.1%, and 15% more at 0.01%. The extra memory needed goes up even more at very low false positive rates (see the package docs for details).
+In a blocked Bloom filter, some blocks end up with more items than others, which increases the false positive rate. To make up for this, the filter needs to be a bit larger. Compared to a standard Bloom filter, it uses about 3% more memory at a 1% false positive rate, 8% more at 0.1%, and 15% more at 0.01%. The extra memory needed goes up even more at very low false positive rates (see the package docs for details).
 
 The filter uses [wyhash](https://github.com/wangyi-fudan/wyhash) for hashing.
 
@@ -123,7 +120,7 @@ Memory, bits per item at 10M items (lower is better):
 | 1%                  |   9.90 |        **9.59** | 10.79 |
 | 0.1%                |  15.49 |       **14.38** | 16.18 |
 
-Overall, unsure is about 4× faster than bits-and-blooms and 2× faster than gloom, using 1–8% more memory than bits-and-blooms and 4–10% less than gloom.
+Overall, _unsure_ is about 4× faster than _bits-and-blooms_ and 2× faster than _gloom_, using 1–8% more memory than _bits-and-blooms_ and 4–10% less than _gloom_.
 
 To reproduce, run `make bloom-bench-full` and `make bloom-size` from the repository root.
 
