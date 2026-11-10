@@ -38,9 +38,9 @@ sketch.Count([]byte("bob"))   // 0, false (not in the top 2)
 sketch.Total()                // 9
 ```
 
-`Top` returns up to k items, from the most frequent to the least frequent. Counts are estimates: they're usually exact for the most frequent items, but may be slightly lower than the actual count for less common items (an item can lose some events while competing for a bucket). Very rarely, a count can be higher, if two items share a bucket and a 32-bit fingerprint. Counts are stored as 32-bit numbers, so if an item is added more than about 4.3 billion times, its count stays at `math.MaxUint32`.
+`Top` returns up to k items, from the most frequent to the least frequent. Counts are estimates: they're usually exact for the most frequent items, but may be slightly lower than the actual count for less common items. Very rarely, a count can be higher. Counts are stored as 32-bit numbers, so if an item is added more than about 4.3 billion times, its count stays at `math.MaxUint32`.
 
-The sketch is deterministic: it hashes items with wyhash final 4.3 (seed 0) and decays buckets with a fixed-seed generator (see below), so the same items added in the same order always produce the same sketch. The sketch is not designed for adversarial input.
+The sketch is deterministic, so the same items added in the same order always produce the same sketch. The sketch is not designed for adversarial input.
 
 ## How it works
 
@@ -64,7 +64,7 @@ row 2  │ fp=9  │       │       │ fp=2  │ fp=4  │  column 4 is owned 
 
 The item's estimated count is the largest count among its buckets. Frequent items quickly reach counts that make decay almost impossible, so they keep their buckets. Rare items keep replacing each other without affecting the frequent ones. Unlike some other Top-K implementations, rare items don't inflate the counts of frequent items.
 
-Next to the table, the sketch keeps a min-heap with the k items that have the largest estimates so far. After an item's buckets are updated, if its estimate is larger than the smallest count in the heap, the item is added to the heap (or its count is increased if it's already there), and the smallest item is removed.
+Next to the table, the sketch keeps a min-heap with the k items that have the largest estimates so far. After an item's buckets are updated, if its estimate is larger than the smallest count in the heap, the item is added to the heap, and the smallest item is removed. If the item is already in the heap, its count is increased.
 
 **This implementation** uses d = 2 rows of max(16k, 256) buckets, and a decay base of b = 0.5. With b = 0.5, decay is cheap: the count c decreases if the top c bits of a random number are all zero. Counts of 64 and above never decay. Each bucket is 8 bytes (a 32-bit fingerprint and a 32-bit count), so the table takes 256×k bytes. The heap takes about 100 bytes per item plus the item itself.
 
@@ -76,44 +76,44 @@ The sketch uses [wyhash](https://github.com/wangyi-fudan/wyhash) for hashing and
 
 ## Benchmarks
 
-Compared to [keilerkonzept/topk](https://github.com/keilerkonzept/topk) (HeavyKeeper with b = 0.9, d = ln k rows of k·ln k buckets) and [dgryski/go-topk](https://github.com/dgryski/go-topk) (Filtered Space-Saving). All with default settings. Apple M1, 10M events over 1M distinct 16-byte items with a Zipf distribution.
+Compared to [keilerkonzept/topk](https://github.com/keilerkonzept/topk) (HeavyKeeper with b = 0.9, d = ln k rows of k·ln k buckets, default settings) and [dgryski/go-topk](https://github.com/dgryski/go-topk) (Filtered Space-Saving). Space-Saving needs more monitored items than k to be accurate, so _dgryski_ monitors 3k items and reports the top k of them. Apple M1, 10M events over 1M distinct 16-byte items with a Zipf distribution.
 
 Precision is the fraction of the reported top k that is in the true top k (higher is better):
 
-| k    | Zipf s |     unsure |    keiler | dgryski |
-| ---- | -----: | ---------: | --------: | ------: |
-| 100  |    0.6 |   **0.98** |      0.34 |    0.08 |
-|      |    0.8 |   **1.00** |      0.76 |    0.42 |
-|      |    1.0 |   **0.99** |  **1.00** |    0.73 |
-|      |   Size |      37 KB | **27 KB** |   15 KB |
-| 1000 |    0.6 |   **0.99** |      0.70 |    0.21 |
-|      |    0.8 |   **1.00** |      0.98 |    0.53 |
-|      |    1.0 |   **1.00** |  **1.00** |    0.78 |
-|      |   Size | **359 KB** |    414 KB |  133 KB |
+| k    | Zipf s |     unsure |    keiler |  dgryski |
+| ---- | -----: | ---------: | --------: | -------: |
+| 100  |    0.6 |   **0.98** |      0.38 |     0.19 |
+|      |    0.8 |   **1.00** |      0.78 |     0.85 |
+|      |    1.0 |       0.99 |  **1.00** | **1.00** |
+|      |   Size |      39 KB | **27 KB** |    39 KB |
+| 1000 |    0.6 |   **0.99** |      0.70 |     0.52 |
+|      |    0.8 |   **1.00** |      0.98 | **1.00** |
+|      |    1.0 |   **1.00** |  **1.00** | **1.00** |
+|      |   Size | **364 KB** |    414 KB |   453 KB |
 
-Count error is the mean of |estimate − true| / true over the reported items (lower is better). It includes the wrongly reported items, so it's high when precision is low. Space-Saving (_dgryski_) overestimates: a new item inherits the count of the item it evicts.
+Count error is the mean of |estimate − true| / true over the reported items (lower is better). It includes the wrongly reported items, so it's high when precision is low:
 
-| k    | Zipf s |    unsure | keiler | dgryski |
-| ---- | -----: | --------: | -----: | ------: |
-| 100  |    0.6 |  **0.6%** |    93% |   1600× |
-|      |    0.8 | **0.02%** |    46% |    670× |
-|      |    1.0 |  **0.0%** |  0.14% |    420× |
-| 1000 |    0.6 |  **0.5%** |    62% |    122× |
-|      |    0.8 | **0.06%** |   1.9% |     65× |
-|      |    1.0 | **0.02%** |  0.24% |     28× |
+| k    | Zipf s |    unsure | keiler |   dgryski |
+| ---- | -----: | --------: | -----: | --------: |
+| 100  |    0.6 |  **0.6%** |    94% |      428× |
+|      |    0.8 | **0.02%** |    46% |      230% |
+|      |    1.0 |  **0.0%** |  0.12% |  **0.0%** |
+| 1000 |    0.6 |  **0.5%** |    62% |       18× |
+|      |    0.8 | **0.06%** |   1.9% |     0.31% |
+|      |    1.0 | **0.02%** |  0.24% | **0.02%** |
 
 Speed on the Zipf s=0.8 stream (lower is better):
 
-| Operation |    k |     unsure |  keiler |     dgryski |
-| --------- | ---: | ---------: | ------: | ----------: |
-| Add       |   10 |  **75 ns** |  148 ns |      104 ns |
-|           |  100 |  **77 ns** |  173 ns |      126 ns |
-|           | 1000 |  **77 ns** |  222 ns |      140 ns |
-| Top       |   10 |    0.35 µs | 0.64 µs | **0.30 µs** |
-|           |  100 | **3.8 µs** |   13 µs |  **3.9 µs** |
-|           | 1000 |  **73 µs** |  268 µs |   **73 µs** |
+| Operation |    k |      unsure |  keiler | dgryski |
+| --------- | ---: | ----------: | ------: | ------: |
+| Add       |   10 |   **77 ns** |  157 ns |  115 ns |
+|           |  100 |   **78 ns** |  173 ns |  132 ns |
+|           | 1000 |   **74 ns** |  222 ns |  124 ns |
+| Top       |   10 | **0.35 µs** | 0.64 µs | 0.77 µs |
+|           |  100 |  **3.8 µs** |   13 µs |   14 µs |
+|           | 1000 |   **72 µs** |  270 µs |  292 µs |
 
-Overall, _unsure_ is 2–3× faster than _keiler_, and finds the true top k with ≥97% precision and counts with <1% error even on flat streams. _keiler_ drops to 34–70% precision with counts off by 62–93%. _dgryski_ is smaller, but misses most of the top items and overestimates their counts by 28× or more.
+Overall, _unsure_ is 1.5–3× faster than the others for Add and 1.8–4× faster for Top. It finds the true top k with ≥98% precision and counts with <1% error even on flat streams. On flat streams, _keiler_ drops to 38–70% precision with a count error of 62–94%, and _dgryski_ to 19–52% with counts 18× or more too high. On skewed streams (s=1.0), all three are about equally accurate.
 
 To reproduce, run `make topk-bench-full` and `make topk-accuracy` from the repository root.
 

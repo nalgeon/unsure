@@ -32,14 +32,13 @@
 // takes about 350 bytes per k plus the items: ~5 KB for k=10 and ~360 KB
 // for k=1000 with 16-byte items.
 //
-// The sketch is deterministic: it hashes items with wyhash final 4.3 (seed 0)
-// and decays buckets with a fixed-seed generator, so the same items added in
-// the same order always produce the same sketch.
-//
 // Buckets store a 32-bit fingerprint (half of the item's hash). If two items map
 // to the same bucket and have the same fingerprint, they share the same count,
 // so the count can be higher than the actual count. This almost never happens
 // on normal, non-adversarial inputs.
+//
+// The sketch is deterministic: the same items added in the same order
+// always produce the same sketch.
 package topk
 
 import (
@@ -69,7 +68,8 @@ type Entry struct {
 
 // Sketch finds the most frequent items in a stream.
 //
-// Sketch is not safe for concurrent use if any goroutine calls Add or AddN.
+// Allocates memory at creation and never grows or shrinks.
+// Not safe for concurrent use.
 type Sketch struct {
 	k       int
 	buckets []bucket          // two rows of width buckets

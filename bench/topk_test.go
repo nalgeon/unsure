@@ -43,11 +43,21 @@ func (s unsureTK) Top() []tkEntry {
 }
 
 // dgryskiTK adapts github.com/dgryski/go-topk (Filtered Space-Saving).
-type dgryskiTK struct{ s *dgryski.Stream }
+// Space-Saving's error is up to N/m for m monitored items, so with m = k
+// the bottom of the top k is filled with tail items with inflated counts.
+// The usual practice is to monitor m > k items and report the top k of them.
+// We use m = 3k, which takes about as much memory as our Sketch.
+type dgryskiTK struct {
+	s *dgryski.Stream
+	k int
+}
+
+func newDgryskiTK(k int) dgryskiTK { return dgryskiTK{dgryski.New(3 * k), k} }
 
 func (s dgryskiTK) Add(item string) { s.s.Insert(item, 1) }
 func (s dgryskiTK) Top() []tkEntry {
 	top := s.s.Keys()
+	top = top[:min(s.k, len(top))]
 	res := make([]tkEntry, len(top))
 	for i, e := range top {
 		res[i] = tkEntry{e.Key, uint64(e.Count)}
@@ -76,7 +86,7 @@ type tkImpl struct {
 var tkImpls = []tkImpl{
 	{"unsure", func(k int) tkSketch { return unsureTK{topk.New(k)} }},
 	{"keiler", func(k int) tkSketch { return keilerTK{keiler.New(k)} }},
-	{"dgryski", func(k int) tkSketch { return dgryskiTK{dgryski.New(k)} }},
+	{"dgryski", func(k int) tkSketch { return newDgryskiTK(k) }},
 }
 
 // tkStream is a sequence of events (item ids) over a set of keys, with true counts.
@@ -139,7 +149,6 @@ func (st *tkStream) score(top []tkEntry, k int) (precision, countErr float64) {
 }
 
 // tkStreams are 10M events over 1M items, from flat (s=0.6) to skewed (s=1.0).
-// At s=0.6, the top item has ~0.3% of events, the 1000th ~0.006%.
 var tkStreams = sync.OnceValue(func() []*tkStream {
 	return []*tkStream{
 		makeTKStream(0.6, tkItems, tkEvents),
