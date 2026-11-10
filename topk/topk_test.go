@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/rand/v2"
 	"slices"
+	"strconv"
 	"testing"
 
 	"github.com/nalgeon/unsure/internal/wyhash"
@@ -273,14 +274,20 @@ func TestDecay(t *testing.T) {
 }
 
 func TestAddNLarge(t *testing.T) {
+	if strconv.IntSize < 64 {
+		t.Skip("needs a 64-bit int")
+	}
+	// Variables instead of constants, so the test compiles on 32-bit platforms.
+	var u, big uint64 = math.MaxUint32, 1 << 40
+	max32 := int(u)
 	s := New(1)
 	narrow(s)
 	a, b := []byte("a"), []byte("b")
 	s.AddN(a, 10)
 	// Takes over both buckets, count is capped.
-	s.AddN(b, 1<<40)
-	if top := s.Top(); len(top) != 1 || top[0].Item != "b" || top[0].Count != math.MaxUint32 {
-		t.Errorf("Top = %v, want [b %d]", top, uint32(math.MaxUint32))
+	s.AddN(b, int(big))
+	if top := s.Top(); len(top) != 1 || top[0].Item != "b" || top[0].Count != max32 {
+		t.Errorf("Top = %v, want [b %d]", top, max32)
 	}
 	// Counts of 64 and more never decay, even with huge n.
 	s = New(1)

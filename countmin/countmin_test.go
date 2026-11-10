@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/rand/v2"
 	"slices"
+	"strconv"
 	"testing"
 
 	"github.com/nalgeon/unsure/internal/wyhash"
@@ -179,19 +180,25 @@ func TestEdgeKeys(t *testing.T) {
 }
 
 func TestSaturation(t *testing.T) {
+	if strconv.IntSize < 64 {
+		t.Skip("needs a 64-bit int")
+	}
+	// A variable instead of a constant, so the test compiles on 32-bit platforms.
+	var u uint64 = math.MaxUint32
+	max32 := int(u)
 	s := New(0.01, 0.01)
 	k := []byte("alice")
-	s.AddN(k, math.MaxUint32-1)
+	s.AddN(k, max32-1)
 	s.AddN(k, 5)
-	if c := s.Count(k); c != math.MaxUint32 {
-		t.Fatalf("Count = %d, want %d", c, uint32(math.MaxUint32))
+	if c := s.Count(k); c != max32 {
+		t.Fatalf("Count = %d, want %d", c, max32)
 	}
-	s.AddN(k, math.MaxUint32)
-	if c := s.Count(k); c != math.MaxUint32 {
-		t.Fatalf("Count = %d, want %d", c, uint32(math.MaxUint32))
+	s.AddN(k, max32)
+	if c := s.Count(k); c != max32 {
+		t.Fatalf("Count = %d, want %d", c, max32)
 	}
 	// Total doesn't saturate at uint32.
-	if want := 2*math.MaxUint32 + 4; s.Total() != want {
+	if want := 2*max32 + 4; s.Total() != want {
 		t.Fatalf("Total = %d, want %d", s.Total(), want)
 	}
 }

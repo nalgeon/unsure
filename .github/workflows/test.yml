@@ -1,0 +1,30 @@
+name: test
+
+on:
+    push:
+    pull_request:
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                # The minimum version from go.mod and the latest release.
+                go: ["1.25.x", "stable"]
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: actions/setup-go@v6
+              with:
+                  go-version: ${{ matrix.go }}
+                  # The main module has no dependencies.
+                  cache: false
+
+            - name: Vet
+              run: go vet ./...
+
+            - name: Vet (32-bit)
+              run: GOARCH=386 go vet ./...
+
+            - name: Test
+              run: go test ./...
