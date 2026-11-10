@@ -7,17 +7,17 @@ Accuracy: `make topk-accuracy`, 10M events over 1M items, Zipf with shuffled ran
 
 **keilerkonzept/topk** (the reference): HeavyKeeper, decay b=0.9, d = max(3, ln k) rows of w = max(256, k·ln k) buckets, min-heap of k with a map index. Random decay via math/rand.
 
-| Add             | Top               | p                   | Size   |
-| --------------- | ----------------- | ------------------- | ------ |
-| 148 / 173 / 222 | 0.64 / 13 / 268   | 0.70 / 0.98 / 1.00  | 414 KB |
+| Add             | Top             | p                  | Size   |
+| --------------- | --------------- | ------------------ | ------ |
+| 148 / 173 / 222 | 0.64 / 13 / 268 | 0.70 / 0.98 / 1.00 | 414 KB |
 
 Precision at k=100: 0.34–0.41 / 0.76–0.79 / 1.00 (it isn't deterministic, so results vary between runs). Mean count error |estimate − true| / true over the reported items, k=1000: 62% / 1.9% / 0.24%; at k=100: 93% / 46% / 0.14% (includes the wrongly reported items).
 
 **dgryski/go-topk**: Filtered Space-Saving, m = k monitored items, 6k alpha counters.
 
-| Add             | Top               | p                   | Size   |
-| --------------- | ----------------- | ------------------- | ------ |
-| 104 / 126 / 140 | 0.30 / 3.9 / 73   | 0.21 / 0.53 / 0.78  | 133 KB |
+| Add             | Top             | p                  | Size   |
+| --------------- | --------------- | ------------------ | ------ |
+| 104 / 126 / 140 | 0.30 / 3.9 / 73 | 0.21 / 0.53 / 0.78 | 133 KB |
 
 With m = k, the tail evicts real top items all the time. Counts are overestimates by 28×–10000× (they inherit the evicted item's count).
 
@@ -71,10 +71,25 @@ Design:
 - Skip the heap entirely if the estimate ≤ the heap minimum (the common case for tail items): one hash, two bucket accesses, one compare.
 - An item already in the heap keeps its largest estimate (its buckets may decay, but the true count never does).
 
-| Add          | Top              | p                   | Size   |
-| ------------ | ---------------- | ------------------- | ------ |
-| 75 / 77 / 77 | 0.35 / 3.8 / 73  | 0.99 / 1.00 / 1.00  | 359 KB |
+| Add          | Top             | p                  | Size   |
+| ------------ | --------------- | ------------------ | ------ |
+| 75 / 77 / 77 | 0.35 / 3.8 / 73 | 0.99 / 1.00 / 1.00 | 359 KB |
 
 p at k=10 / 100: 1.00 / 0.98 at s=0.6, 1.00 / 1.00 at s=0.8, 1.00 / 0.99 at s=1.0. Mean count error ≤ 0.6%.
 
 vs keiler: 2–3× faster Add (at k=1000, 2.9×), 3.6× faster Top, 13% less memory at k=1000 (but 37 vs 27 KB at k=100: our width is 16k, theirs k·ln k), and p ≥ 0.98 at s=0.6 where keiler gets 0.34–0.70. Top is dominated by the sort and the k string allocations.
+
+## 4. Three rows at equal memory (rejected, 2026-11-10)
+
+With 2 rows, an item is locked out for good if both its buckets are owned by heavier items (counts ≥ 64 never decay), e.g. rank 40 of 100 (17k events) missing at s=1.0. Tried 3 rows of 32k/3 buckets (same memory). 20 stream seeds. Lockouts = missing true top-k items with count ≥ 1.05× the k-th:
+
+| s / k      | p (2 rows) | p (3 rows) | err (2 → 3)    | lockouts (2 → 3) |
+| ---------- | ---------- | ---------- | -------------- | ---------------- |
+| 0.6 / 100  | 0.988      | 0.982      | 0.60 → 0.91%   | 5 → 3            |
+| 0.6 / 1000 | 0.990      | 0.989      | 0.55 → 0.69%   | 67 → 24          |
+| 0.8 / 100  | 0.999      | 1.000      | 0.02 → 0.03%   | 2 → 1            |
+| 0.8 / 1000 | 0.997      | 0.999      | 0.07 → 0.07%   | 58 → 10          |
+| 1.0 / 100  | 0.997      | 0.999      | 0.002 → 0.002% | 3 → 1            |
+| 1.0 / 1000 | 0.998      | 1.000      | 0.017 → 0.013% | 37 → 13          |
+
+3 rows cut lockouts 2.5–6×, but narrower rows get more tail traffic, so flat-stream count error and precision get worse. Add 75 / 77 / 76 → 97 / 98 / 93 ns (+23–29%), Top unchanged. Kept 2 rows: the precision gain is ≤ 0.2 points, not worth a quarter of Add speed.
