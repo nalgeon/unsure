@@ -239,15 +239,23 @@ func newTKWarm(im tkImpl, st *tkStream, k int) tkSketch {
 
 func BenchmarkTopKAdd(b *testing.B) {
 	st := tkBenchStream()
+	// The next 1M events' keys, laid out in event order in one buffer.
+	// Reading them is sequential, so the benchmark measures the sketch,
+	// not cache misses on random st.keys lookups.
+	buf := make([]byte, 0, 16*1_000_000)
+	for _, id := range st.events[1_000_000:2_000_000] {
+		buf = append(buf, st.keys[id]...)
+	}
+	keys := string(buf)
 	for _, k := range tkKs {
 		for _, im := range tkImpls {
 			b.Run(fmt.Sprintf("k=%d/impl=%s", k, im.name), func(b *testing.B) {
 				s := newTKWarm(im, st, k)
-				i := 1_000_000
+				i := 0
 				for b.Loop() {
-					s.Add(st.keys[st.events[i]])
-					i++
-					if i == len(st.events) {
+					s.Add(keys[i : i+16])
+					i += 16
+					if i == len(keys) {
 						i = 0
 					}
 				}

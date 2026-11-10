@@ -106,14 +106,14 @@ Speed on the Zipf s=0.8 stream (lower is better):
 
 | Operation |    k |      unsure |  keiler | dgryski |
 | --------- | ---: | ----------: | ------: | ------: |
-| Add       |   10 |   **77 ns** |  157 ns |  115 ns |
-|           |  100 |   **78 ns** |  173 ns |  132 ns |
-|           | 1000 |   **74 ns** |  222 ns |  124 ns |
+| Add       |   10 |   **29 ns** |   64 ns |   59 ns |
+|           |  100 |   **29 ns** |   84 ns |   70 ns |
+|           | 1000 |   **30 ns** |  130 ns |   73 ns |
 | Top       |   10 | **0.35 µs** | 0.64 µs | 0.77 µs |
 |           |  100 |  **3.8 µs** |   13 µs |   14 µs |
 |           | 1000 |   **72 µs** |  270 µs |  292 µs |
 
-Overall, _unsure_ is 1.5–3× faster than the others for Add and 1.8–4× faster for Top. It finds the true top k with ≥98% precision and counts with <1% error even on flat streams. On flat streams, _keiler_ drops to 38–70% precision with a count error of 62–94%, and _dgryski_ to 19–52% with counts 18× or more too high. On skewed streams (s=1.0), all three are about equally accurate.
+Overall, _unsure_ is 2–4× faster than the others for Add and 1.8–4× faster for Top. It finds the true top k with ≥98% precision and counts with <1% error even on flat streams. On flat streams, _keiler_ drops to 38–70% precision with a count error of 62–94%, and _dgryski_ to 19–52% with counts 18× or more too high. On skewed streams (s=1.0), all three are about equally accurate.
 
 To reproduce, run `make topk-bench-full` and `make topk-accuracy` from the repository root.
 

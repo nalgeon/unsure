@@ -93,3 +93,15 @@ With 2 rows, an item is locked out for good if both its buckets are owned by hea
 | 1.0 / 1000 | 0.998      | 1.000      | 0.017 → 0.013% | 37 → 13          |
 
 3 rows cut lockouts 2.5–6×, but narrower rows get more tail traffic, so flat-stream count error and precision get worse. Add 75 / 77 / 76 → 97 / 98 / 93 ns (+23–29%), Top unchanged. Kept 2 rows: the precision gain is ≤ 0.2 points, not worth a quarter of Add speed.
+
+## 5. Add benchmark without key-fetch misses (2026-11-10)
+
+The Add benchmark looked up `st.keys[st.events[i]]`: 1M separately allocated strings in random Zipf order, so two cache misses per op (string header, then data) that every implementation paid. Now the keys of events 1M–2M are laid out in event order in one 16 MB string and read sequentially. Reference re-recorded. Sketch code unchanged.
+
+| Add (old → new) | k=10     | k=100    | k=1000    |
+| --------------- | -------- | -------- | --------- |
+| unsure          | 75 → 30  | 77 → 29  | 77 → 30   |
+| keiler          | 149 → 64 | 171 → 84 | 222 → 130 |
+| dgryski         | 110 → 58 | 146 → 71 | 124 → 72  |
+
+vs keiler: 2.1 / 2.9 / 4.4× faster Add (was 2.0 / 2.2 / 2.9×). Top unchanged. Earlier entries' Add numbers include ~45 ns of harness overhead; e.g. entry 4's 3-row cost (+~20 ns) is about +70% of the sketch's own time, not +25%.
