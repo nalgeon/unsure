@@ -15,7 +15,7 @@
 // Frequent items quickly reach counts that make decay almost impossible,
 // so they keep their buckets. Rare items keep replacing each other without
 // affecting the frequent ones. Unlike Count-min or Space-Saving methods
-// for Top-K, rare items don't inflate the counts of frequent items.
+// for Top-K, rare items don't artificially increase the counts of frequent items.
 //
 // Counts are estimates: they're usually exact for the most frequent items,
 // but may be slightly lower than the actual count for less common items

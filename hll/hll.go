@@ -35,10 +35,9 @@
 //	16    0.41%    64 KB
 //	18    0.20%    256 KB
 //
-// Hashing is deterministic: wyhash final 4.3 with seed 0, so the same items
-// always produce the same sketch. The sketch is not designed for
-// adversarially chosen items: anyone who knows the seed can craft items
-// that inflate the estimate.
+// Hashing is deterministic, so the same items always produce the same sketch.
+// The sketch is not designed for adversarially chosen items: anyone who knows
+// the seed can create items that artificially increase the estimate.
 package hll
 
 import (
@@ -67,10 +66,10 @@ const alphaInf = 0.7213475204444817
 // the sketches have different precisions.
 var ErrPrecisionMismatch = errors.New("hll: sketches have different precisions")
 
-// Sketch estimates the number of distinct items added to it,
-// with relative standard error about 1.04/√(2^p).
+// Sketch estimates the number of distinct items added to it.
 //
-// Sketch is not safe for concurrent use if any goroutine calls Add or Merge.
+// Allocates memory at creation and never grows or shrinks.
+// Not safe for concurrent use.
 type Sketch struct {
 	regs []uint8
 	// hist[k] is the number of registers with value k.
@@ -122,7 +121,7 @@ func (s *Sketch) addHash(h uint64) {
 }
 
 // Count returns the estimated number of distinct items added to the sketch.
-func (s *Sketch) Count() uint64 {
+func (s *Sketch) Count() int {
 	m := float64(len(s.regs))
 	q := 64 - int(s.p) // registers are in [0, q+1]
 	// Ertl's improved estimator (Algorithm 6 in the paper).
@@ -136,11 +135,11 @@ func (s *Sketch) Count() uint64 {
 	// to -0.2% at small n. At p ≥ 10 both are within ±0.1%.
 	alpha := alphaInf / (1 + 1.079/m)
 	est := alpha * m * m / z
-	if est >= math.MaxUint64 {
-		// All registers saturated: only possible after ~2^64 items.
-		return math.MaxUint64
+	if est >= math.MaxInt {
+		// Only possible after ~2^63 items (2^31 on 32-bit platforms).
+		return math.MaxInt
 	}
-	return uint64(math.Round(est))
+	return int(math.Round(est))
 }
 
 // Merge adds the items of other to s, so that s estimates the number of
@@ -179,8 +178,7 @@ func (s *Sketch) Merge(other *Sketch) error {
 	return nil
 }
 
-// Size returns the memory used by the sketch's registers and histogram,
-// in bytes.
+// Size returns the memory used by the sketch's data, in bytes.
 func (s *Sketch) Size() int {
 	return len(s.regs) + 4*len(s.hist)
 }

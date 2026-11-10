@@ -62,7 +62,7 @@ row 2  │ fp=9  │       │       │ fp=2  │ fp=4  │  column 4 is owned 
          col 1   col 2   col 3   col 4   col 5
 ```
 
-The item's estimated count is the largest count among its buckets. Frequent items quickly reach counts that make decay almost impossible, so they keep their buckets. Rare items keep replacing each other without affecting the frequent ones. Unlike some other Top-K implementations, rare items don't inflate the counts of frequent items.
+The item's estimated count is the largest count among its buckets. Frequent items quickly reach counts that make decay almost impossible, so they keep their buckets. Rare items keep replacing each other without affecting the frequent ones. Unlike some other Top-K implementations, rare items don't artificially increase the counts of frequent items.
 
 Next to the table, the sketch keeps a min-heap with the k items that have the largest estimates so far. After an item's buckets are updated, if its estimate is larger than the smallest count in the heap, the item is added to the heap, and the smallest item is removed. If the item is already in the heap, its count is increased.
 

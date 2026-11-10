@@ -25,7 +25,7 @@ type hllSketch interface {
 type unsureHLL struct{ s *hll.Sketch }
 
 func (s unsureHLL) Add(item []byte)             { s.s.Add(item) }
-func (s unsureHLL) Count() uint64               { return s.s.Count() }
+func (s unsureHLL) Count() uint64               { return uint64(s.s.Count()) }
 func (s unsureHLL) Merge(other hllSketch) error { return s.s.Merge(other.(unsureHLL).s) }
 
 // axiomHLL adapts github.com/axiomhq/hyperloglog to the hllSketch interface.

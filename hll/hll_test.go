@@ -73,7 +73,7 @@ func TestSmall(t *testing.T) {
 	s := New()
 	for i, k := range makeKeys(1, 100) {
 		s.Add(k)
-		n := uint64(i + 1)
+		n := i + 1
 		if c := s.Count(); c+1 < n || c > n+1 {
 			t.Fatalf("after %d items: Count = %d", n, c)
 		}
@@ -111,12 +111,12 @@ func TestEdgeKeys(t *testing.T) {
 	for _, k := range keys {
 		s.Add(k)
 	}
-	if c := s.Count(); c != uint64(len(keys)) {
+	if c := s.Count(); c != len(keys) {
 		t.Fatalf("Count = %d, want %d", c, len(keys))
 	}
 	// nil and empty are the same item.
 	s.Add([]byte{})
-	if c := s.Count(); c != uint64(len(keys)) {
+	if c := s.Count(); c != len(keys) {
 		t.Fatalf("after adding empty key: Count = %d, want %d", c, len(keys))
 	}
 }
@@ -153,8 +153,8 @@ func TestSaturated(t *testing.T) {
 	for i := range s.regs {
 		s.addHash(uint64(i) << (64 - s.p))
 	}
-	if c := s.Count(); c != math.MaxUint64 {
-		t.Fatalf("all registers saturated: Count = %d, want MaxUint64", c)
+	if c := s.Count(); c != math.MaxInt {
+		t.Fatalf("all registers saturated: Count = %d, want MaxInt", c)
 	}
 }
 

@@ -6,7 +6,7 @@ A simple and fast HyperLogLog implemented in Go.
 
 HyperLogLog is a unique items counter that trades accuracy for space. It tells you approximately how many _different_ items it has seen, no matter how many times each one appeared. HyperLogLog (also called a _sketch_ from here on) doesn't actually store the items, so it's much more compact than a regular set.
 
-For example, a regular set (`map[string]struct{}`) of 1,000,000 distinct 8-byte strings takes about 64 MB. A HyperLogLog sketch counting the same strings with about 0.8% error uses only 16 KB — that's almost 4,000 times smaller. The size of the sketch doesn't depend on the number of items or their size, only on the accuracy you choose. A 16 KB sketch counts a billion items as accurately as a thousand.
+For example, a regular set of 1,000,000 distinct 8-byte strings takes about 64 MB. A HyperLogLog sketch counting the same strings with about 0.8% error uses only 16 KB — that's almost 4,000 times smaller. The size of the sketch doesn't depend on the number of items or their size, only on the accuracy you choose. A 16 KB sketch counts a billion items as accurately as a thousand.
 
 HyperLogLog is useful when you need to count unique things in a large stream: unique visitors to a website, unique IP addresses hitting a server, unique search queries per day, or distinct values in a database column. You can merge sketches to gather data from multiple machines or segments (like by hour, page, or region). When you merge two sketches, you get the total number of unique items from both, without counting shared items twice.
 
@@ -57,13 +57,13 @@ To trade accuracy for memory, use `hll.NewPrecision(p)` with p from 8 to 18. Eac
 
 The sketch also has a fixed 256-byte histogram (see below).
 
-Sketches can only be merged if they have the same precision. Hashing is deterministic (wyhash with seed 0), so the same items always produce the same sketch. The sketch is not designed for adversarial input: anyone who knows the seed can craft items that inflate the count.
+Sketches can only be merged if they have the same precision. The sketch is deterministic, so the same items always produce the same sketch. The sketch is not designed for adversarial input: anyone who knows the seed can create items that artificially increase the estimate.
 
 ## How it works
 
-**The HyperLogLog** is based on a simple observation. If you hash items to random bit strings, about half of them start with 1, a quarter with 01, an eighth with 001, and so on. Seeing a hash with k leading zeros suggests there were about 2^(k+1) distinct items. Duplicates hash the same way, so they don't affect the result.
+**The HyperLogLog** is based on a simple observation. If you hash items to random bit strings, about half of them start with 1, a quarter with 01, an eighth with 001, and so on. Seeing a hash with k leading zeros suggests there were about 2^(k+1) distinct items. Duplicates hash to the same value, so they don't affect the result.
 
-One such observation is very noisy, so the sketch splits the items into m = 2^p groups. The first p bits of the hash pick a group (a _register_), and the register keeps the highest _rank_ (leading zeros plus one) it has seen in the rest of the hash:
+One such observation is unreliable, so the sketch splits the items into m = 2^p groups. The first p bits of the hash pick a group (a _register_), and the register keeps the highest _rank_ (leading zeros plus one) it has seen in the rest of the hash:
 
 ```
         ┌──────┐   ┌──────────┬────────────────────────┐
@@ -102,6 +102,8 @@ Compared to [axiomhq/hyperloglog](https://github.com/axiomhq/hyperloglog) (Hyper
 |           |  14 |  16 KB |  **20,100** |    58,600 |      54,300 |
 |           |  18 | 256 KB | **341,000** |   951,000 |     847,000 |
 
+The `Count` gap comes from how the estimate is computed. _axiomhq_ and _BoomFilters_ scan all the registers on every count, computing 2^-register with `math.Pow` for each one (about 20 ns per register), so their `Count` grows with the sketch size. _unsure_ keeps a histogram of register values up to date as registers change, and `Count` loops over its 64 entries regardless of the sketch size. The cost of keeping the histogram moves to `Add`, which updates it only when a register grows (often while the sketch fills up, rarely after).
+
 `Merge` combines two sketches filled with different items, so about half of the registers grow.
 
 Accuracy at p=14 (0.81% standard error), relative RMSE over 100 sketches (lower is better):
@@ -112,7 +114,7 @@ Accuracy at p=14 (0.81% standard error), relative RMSE over 100 sketches (lower 
 | 40,000         | **0.64%** |     0.71% |       50.8% |
 | 1,000,000      | **0.79%** |     0.89% |        9.9% |
 
-_axiomhq_ is nearly exact below ~16,000 items thanks to its sparse mode. Above that, both are equally accurate. _BoomFilters_ is far off (up to 50%) around 20,000–40,000 items.
+_axiomhq_ is nearly exact below ~16,000 items thanks to its sparse mode. Above that, _unsure_ and _axiomhq_ are equally accurate. _BoomFilters_ is far off (up to 50%) around 20,000–40,000 items.
 
 Memory at p=14 after adding the given number of distinct items (lower is better):
 
@@ -124,8 +126,6 @@ Memory at p=14 after adding the given number of distinct items (lower is better)
 | 1,000,000      |  16 KB |      16 KB |       16 KB |
 
 _unsure_ and _BoomFilters_ allocate all the registers up front, so their size doesn't depend on the number of items. _axiomhq_ starts in sparse mode, keeping the hashes in a compressed list, and switches to registers once the list would outgrow them (between 3,000 and 10,000 items at p=14). The gap is larger for bigger sketches: at p=18, where the registers take 256 KB, _axiomhq_ takes 8.2 KB at 1,000 items, 40 KB at 10,000, and 208 KB at 100,000.
-
-The `Count` gap comes from how the estimate is computed. _axiomhq_ and _BoomFilters_ scan all the registers on every count, computing 2^-register with `math.Pow` for each one (about 20 ns per register), so their `Count` grows with the sketch size. _unsure_ keeps a histogram of register values up to date as registers change, and `Count` loops over its 64 entries regardless of the sketch size. The cost of keeping the histogram moves to `Add`, which updates it only when a register grows (often while the sketch fills up, rarely after).
 
 Overall, _unsure_ adds about as fast as _axiomhq_ (27% faster when the sketch fits in L1, 3% slower at 256 KB), counts 270–83,000× faster, and merges 2.3–2.9× faster, with the same accuracy and memory for counts above the number of registers. When there are fewer items than registers, _axiomhq_'s sparse mode makes it more accurate and compact.
 
