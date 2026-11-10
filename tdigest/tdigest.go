@@ -69,8 +69,8 @@ type centroid struct {
 
 // Digest estimates quantiles of a stream of numbers.
 //
-// Digest is not safe for concurrent use, even if all goroutines only call
-// Quantile or CDF: queries flush the buffer and change the digest.
+// Allocates memory at creation and never grows or shrinks.
+// Not safe for concurrent use.
 type Digest struct {
 	// Sorted by mean, at most δ+2 entries.
 	centroids []centroid
@@ -129,8 +129,8 @@ func (d *Digest) Add(x float64) {
 }
 
 // Count returns the number of values added to the digest.
-func (d *Digest) Count() uint64 {
-	return uint64(d.total) + uint64(len(d.buf))
+func (d *Digest) Count() int {
+	return int(d.total) + len(d.buf)
 }
 
 // Quantile returns the estimated value below which a fraction q of the
@@ -300,8 +300,7 @@ func (d *Digest) Merge(other *Digest) {
 	d.finish(&c)
 }
 
-// Size returns the memory used by the digest's centroids
-// and buffer, in bytes.
+// Size returns the memory used by the digest's data, in bytes.
 func (d *Digest) Size() int {
 	return 16*(cap(d.centroids)+cap(d.tmp)) + 8*(cap(d.cum)+cap(d.buf))
 }

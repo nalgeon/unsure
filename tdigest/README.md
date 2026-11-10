@@ -6,9 +6,9 @@ A simple and fast t-digest implemented in Go.
 
 A t-digest is a summary of a stream of numbers that trades accuracy for space. It can give you an approximate median, 99th percentile, or any other quantile of the data. It can also estimate what fraction of the numbers are below a certain value (the CDF). The digest doesn't actually store the numbers, so it's much more compact than a sorted list.
 
-For example, finding the exact 99th percentile of 1,000,000 numbers means keeping all of them: a `[]float64` takes 8 MB. A t-digest estimates the same percentile within about 0.03% of the rank (between the 98.97th and the 99.03rd percentile) using only 8 KB — 1,000 times smaller. The size of the digest doesn't depend on the number of values, only on the accuracy you choose. An 8 KB digest summarizes a billion values as well as a million.
+For example, to find the exact 99th percentile of 1,000,000 numbers, you'd have to keep all of them. With `[]float64`, that takes 8 MB. A t-digest estimates the same percentile within about 0.03% of the rank (between the 98.97th and the 99.03rd percentile) using only 8 KB — 1,000 times smaller. The size of the digest doesn't depend on the number of values, only on the accuracy you choose. An 8 KB digest summarizes a billion values as well as a million.
 
-A t-digest is useful when you need percentiles over a large stream: latency percentiles for a service, the distribution of request sizes or prices, or the outlier thresholds in sensor data. You can merge digests to gather data from multiple machines or segments (like by hour, endpoint, or region). A merged digest estimates the percentiles of all values, but with less accuracy than individual digests do.
+A t-digest is useful when you need quantiles over a large stream: latency percentiles for a service, the distribution of request sizes or prices, or the outlier thresholds in sensor data. You can merge digests to gather data from multiple machines or segments (like by hour, endpoint, or region). A merged digest estimates the percentiles of all values, but with less accuracy than individual digests do.
 
 You can add numbers to a digest, estimate quantiles and the CDF, and merge digests. You cannot remove numbers or list them.
 
@@ -44,7 +44,9 @@ east.Merge(west)
 east.Quantile(0.99) // 99th percentile across both servers
 ```
 
-The digest has one setting: the compression _δ_, which limits the number of centroids (see the _How it works_ section) to δ+2. `tdigest.New()` uses δ=100, a common default, which takes 8 KB. To trade accuracy for memory, use `tdigest.NewCompression(δ)` with δ from 10 to 10,000. The error is measured in ranks: a rank error of 0.03% at quantile q=0.99 means the value returned by `Quantile(0.99)` is somewhere between the 98.97th and the 99.03rd percentile of the actual values.
+The digest has one setting: the compression _δ_, which limits the number of centroids (see the _How it works_ section) to δ+2. `tdigest.New()` uses δ=100, a common default, which takes 8 KB. To trade accuracy for memory, use `tdigest.NewCompression(δ)` with δ from 10 to 10,000.
+
+The error is measured in ranks: a rank error of 0.03% at quantile q=0.99 means the value returned by `Quantile(0.99)` is somewhere between the 98.97th and the 99.03rd percentile of the actual values.
 
 Here's the mean rank error for 1M random values:
 
@@ -79,11 +81,11 @@ weight
     min      q=0.25   median  q=0.75     max
 ```
 
-This keeps the error near the tails small, where it matters most. With 1M values and δ=100, the centroids around the median hold about 27,000 values each, those around the 99th percentile about 5,000, and the outermost ones about 500.
+With 1M values and δ=100, the centroids around the median hold about 27,000 values each, those around the 99th percentile about 5,000, and the outermost ones about 500. This keeps the error near the tails small.
 
-**This implementation** is the merging t-digest from the Dunning&Ertl 2019 paper. New values go to a buffer of 5·δ numbers. When the buffer is full, the digest sorts it and merges it with the centroids (already sorted) in a single pass, building new centroids from left to right as long as each one fits within its span of k. Every other pass goes right to left, so that neither tail ends up with fuller centroids. `Quantile`, `CDF` and `Merge` flush the buffer first.
+**This implementation** is the merging t-digest from the Dunning and Ertl 2019 paper. New values go to a buffer of 5·δ numbers. When the buffer is full, the digest sorts it and merges it with the centroids (already sorted) in a single pass, building new centroids from left to right as long as each one fits within its span of k. Every other pass goes right to left, so that neither tail ends up with fuller centroids. `Quantile`, `CDF` and `Merge` flush the buffer first.
 
-The centroids are kept in two fixed arrays of δ+2 entries (the current list and the next one being built), along with the cumulative weights for a binary search in `Quantile` and `CDF`. With δ=100, that's 16·102·2 + 8·103 bytes for the centroids, and 8·500 bytes for the buffer, about 8 KB in total. Adding a value doesn't allocate memory.
+The centroids are kept in two fixed arrays of δ+2 entries (the current list and the next one being built), along with the cumulative weights for a binary search in `Quantile` and `CDF`. With δ=100, that's 16·102·2 + 8·103 bytes for the centroids, and 8·500 bytes for the buffer, about 8 KB in total.
 
 Centroids with weight 1 are treated as exact values rather than spread around their mean, and the exact minimum and maximum are used at the ends. So digests with few values give exact results, and `Quantile(0)` and `Quantile(1)` are always exact.
 
