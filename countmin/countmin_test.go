@@ -28,7 +28,7 @@ func makeKeys(seed uint64, n int) [][]byte {
 type stream struct {
 	keys   [][]byte
 	events []int32
-	counts []uint32
+	counts []int
 }
 
 // makeStream draws n events from u items: uniformly if s == 0,
@@ -38,7 +38,7 @@ func makeStream(s float64, u, n int) *stream {
 	st := &stream{
 		keys:   makeKeys(1, u),
 		events: make([]int32, n),
-		counts: make([]uint32, u),
+		counts: make([]int, u),
 	}
 	var z *rand.Zipf
 	if s > 0 {
@@ -119,6 +119,15 @@ func TestNewPanics(t *testing.T) {
 	}
 }
 
+func TestAddNNegative(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Errorf("AddN(-1) didn't panic")
+		}
+	}()
+	New(0.01, 0.01).AddN([]byte("a"), -1)
+}
+
 func TestEmpty(t *testing.T) {
 	s := New(0.01, 0.01)
 	for _, k := range makeKeys(1, 1000) {
@@ -134,7 +143,7 @@ func TestEmpty(t *testing.T) {
 func TestSingleItem(t *testing.T) {
 	s := New(0.01, 0.01)
 	k := []byte("alice")
-	for i := range uint32(10) {
+	for i := range 10 {
 		s.AddN(k, i)
 	}
 	if c := s.Count(k); c != 45 {
@@ -156,10 +165,10 @@ func TestEdgeKeys(t *testing.T) {
 	}
 	s := New(0.001, 0.01)
 	for i, k := range keys {
-		s.AddN(k, uint32(i+1))
+		s.AddN(k, i+1)
 	}
 	for i, k := range keys {
-		if c := s.Count(k); c < uint32(i+1) {
+		if c := s.Count(k); c < i+1 {
 			t.Fatalf("key (len=%d): Count = %d, want >= %d", len(k), c, i+1)
 		}
 	}
@@ -182,7 +191,7 @@ func TestSaturation(t *testing.T) {
 		t.Fatalf("Count = %d, want %d", c, uint32(math.MaxUint32))
 	}
 	// Total doesn't saturate at uint32.
-	if want := uint64(2*math.MaxUint32 + 4); s.Total() != want {
+	if want := 2*math.MaxUint32 + 4; s.Total() != want {
 		t.Fatalf("Total = %d, want %d", s.Total(), want)
 	}
 }
@@ -214,10 +223,10 @@ func TestConservativeUpdate(t *testing.T) {
 				if c < st.counts[id] {
 					t.Fatalf("item %d: Count = %d, below true count %d", id, c, st.counts[id])
 				}
-				if c > p {
+				if c > int(p) {
 					t.Fatalf("item %d: Count = %d, above plain count-min %d", id, c, p)
 				}
-				if c < p {
+				if c < int(p) {
 					lower++
 				}
 			}
@@ -244,9 +253,9 @@ func TestErrorBound(t *testing.T) {
 				if s.Total() != n {
 					t.Fatalf("Total = %d, want %d", s.Total(), n)
 				}
-				thr := uint32(tg.eps * n)
+				thr := int(tg.eps * n)
 				fail, present := 0, 0
-				var errs []uint32
+				var errs []int
 				for id, c := range st.counts {
 					if c == 0 {
 						continue

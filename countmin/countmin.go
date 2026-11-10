@@ -1,9 +1,9 @@
 // Package countmin implements a Count-min sketch with conservative update.
 //
 // A sketch estimates how many times each item was added. The estimate is
-// never less than the actual count, and is higher by more than epsilon*N
+// never less than the actual count, but it can be greater by up to epsilon*N
 // with probability at most delta, where epsilon and delta are the parameters
-// passed to [New] and N is the sum of all counts added. Estimates are capped
+// passed to [New], and N is the sum of all counts added. Estimates are capped
 // at [math.MaxUint32] (about 4.3 billion): if an item is added more times
 // than that, it is reported as MaxUint32.
 //
@@ -27,10 +27,9 @@
 // The sketch takes about 4*d*w bytes: ~55 KB for (ε=0.001, δ=0.01),
 // ~540 KB for (ε=0.0001, δ=0.01), and ~5.4 MB for (ε=0.00001, δ=0.01).
 //
-// Hashing is deterministic: wyhash final 4.3 with seed 0, so the same items
-// always produce the same sketch. The sketch is not designed for adversarially
-// chosen items: anyone who knows the seed can create items that artificially
-// increase other items' estimates.
+// Hashing is deterministic, so the same items always produce the same sketch.
+// The sketch is not designed for adversarially chosen items: anyone who knows
+// the seed can create items that artificially increase other items' estimates.
 package countmin
 
 import (
@@ -51,10 +50,10 @@ var salts = [maxDepth]uint64{
 	0x6ce759a982ac9dbb, 0x5fbc8e3af21e5baf, 0x19ed312bbbe1edef, 0xfc8cab916c79f08d,
 }
 
-// Sketch is a count-min sketch: Count may overestimate (by more than
-// epsilon*Total with probability at most delta), but never underestimates.
+// Sketch estimates how many times each item was added.
 //
-// Sketch is not safe for concurrent use if any goroutine calls Add or AddN.
+// Allocates memory at creation and never grows or shrinks.
+// Not safe for concurrent use.
 type Sketch struct {
 	counters []uint32 // d rows of width counters, row i at [i*width, (i+1)*width)
 	width    uint64
@@ -64,7 +63,9 @@ type Sketch struct {
 
 // New creates a sketch whose estimates exceed the true count
 // by more than epsilon*N with probability at most delta.
-// Panics if epsilon or delta is not in (0, 1).
+//
+// Panics if epsilon or delta is not in (0, 1), if delta is too small
+// (below about 1e-7), or if epsilon is so small that the sketch is too large.
 func New(epsilon, delta float64) *Sketch {
 	if !(epsilon > 0 && epsilon < 1) {
 		panic("countmin: epsilon must be in (0, 1)")
@@ -99,7 +100,14 @@ func (s *Sketch) Add(item []byte) {
 }
 
 // AddN adds n to the item's count.
-func (s *Sketch) AddN(item []byte, n uint32) {
+// Panics if n is negative.
+func (s *Sketch) AddN(item []byte, n int) {
+	if n <= 0 {
+		if n < 0 {
+			panic("countmin: n must not be negative")
+		}
+		return
+	}
 	h := wyhash.Hash(item, wyhash.Seed0)
 	var idx [maxDepth]uint64
 	est := uint32(math.MaxUint32)
@@ -108,10 +116,7 @@ func (s *Sketch) AddN(item []byte, n uint32) {
 		idx[i&(maxDepth-1)] = j
 		est = min(est, s.counters[j])
 	}
-	v := est + n
-	if v < est {
-		v = math.MaxUint32
-	}
+	v := uint32(min(uint64(est)+uint64(n), math.MaxUint32))
 	for i := range s.salts {
 		j := idx[i&(maxDepth-1)]
 		s.counters[j] = max(s.counters[j], v)
@@ -119,24 +124,26 @@ func (s *Sketch) AddN(item []byte, n uint32) {
 	s.total += uint64(n)
 }
 
-// Count returns the estimated count of the item.
-// It's never below the true count, except that counts above
-// [math.MaxUint32] are reported as MaxUint32.
-func (s *Sketch) Count(item []byte) uint32 {
+// Count returns the estimated count of the item. It's never below
+// the true count, and exceeds it by more than epsilon*Total with
+// probability at most delta. Counts above [math.MaxUint32] are
+// reported as MaxUint32.
+func (s *Sketch) Count(item []byte) int {
 	h := wyhash.Hash(item, wyhash.Seed0)
 	est := uint32(math.MaxUint32)
 	for i := range s.salts {
 		est = min(est, s.counters[s.index(h, i)])
 	}
-	return est
+	// Doesn't fit in a 32-bit int above MaxInt32.
+	return int(min(uint64(est), math.MaxInt))
 }
 
-// Total returns the sum of all counts added (N in the error bound).
-func (s *Sketch) Total() uint64 {
-	return s.total
+// Total returns the sum of all counts added.
+func (s *Sketch) Total() int {
+	return int(min(s.total, math.MaxInt))
 }
 
-// Size returns the memory used by the sketch's counters, in bytes.
+// Size returns the memory used by the sketch's data, in bytes.
 func (s *Sketch) Size() int {
 	return len(s.counters) * 4
 }

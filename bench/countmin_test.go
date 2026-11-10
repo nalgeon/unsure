@@ -15,14 +15,14 @@ import (
 // so the same tests and benchmarks run against all of them.
 type cmSketch interface {
 	Add(item []byte)
-	Count(item []byte) uint32
+	Count(item []byte) int
 }
 
 // boomCM adapts github.com/tylertreat/BoomFilters to the cmSketch interface.
 type boomCM struct{ s *boom.CountMinSketch }
 
-func (s boomCM) Add(item []byte)          { s.s.Add(item) }
-func (s boomCM) Count(item []byte) uint32 { return uint32(min(s.s.Count(item), 1<<32-1)) }
+func (s boomCM) Add(item []byte)       { s.s.Add(item) }
+func (s boomCM) Count(item []byte) int { return int(s.s.Count(item)) }
 
 type cmImpl struct {
 	name string
@@ -39,7 +39,7 @@ type cmStream struct {
 	name   string
 	keys   [][]byte
 	events []int32
-	counts []uint32
+	counts []int
 }
 
 // makeCMStream draws n events from u items: uniformly if s == 0,
@@ -50,7 +50,7 @@ func makeCMStream(name string, s float64, u, n int) *cmStream {
 		name:   name,
 		keys:   makeKeys(1, u),
 		events: make([]int32, n),
-		counts: make([]uint32, u),
+		counts: make([]int, u),
 	}
 	var z *rand.Zipf
 	if s > 0 {
@@ -87,7 +87,7 @@ func TestCountMinAccuracy(t *testing.T) {
 				type result struct {
 					bytes          int
 					mean           float64
-					p50, p99, pmax uint32
+					p50, p99, pmax int
 				}
 				var res []result
 				for _, im := range cmImpls {
@@ -95,7 +95,7 @@ func TestCountMinAccuracy(t *testing.T) {
 					for _, id := range st.events {
 						s.Add(st.keys[id])
 					}
-					var errs []uint32
+					var errs []int
 					sum := 0.0
 					for id, c := range st.counts {
 						if c == 0 {
@@ -191,7 +191,7 @@ func BenchmarkCountMinAdd(b *testing.B) {
 	}
 }
 
-var sinkCount uint32
+var sinkCount int
 
 func BenchmarkCountMinCount(b *testing.B) {
 	keys := makeKeys(1, cmBenchKeys)

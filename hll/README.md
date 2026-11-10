@@ -42,7 +42,7 @@ home.Merge(docs)
 home.Count() // visitors to either page
 ```
 
-The sketch has one setting: the precision _p_, which gives 2^p registers and a relative standard error (stdErr) of 1.04/√(2^p). `hll.New()` uses p=14, a common default, with 0.81% error. With 1 million distinct items, about 68% of the time the estimate is within 0.81% (8,100) of the true count, 95% within 1.6% (2×stdErr), and 99.7% within 2.4% (3×stdErr). The error is relative to the count, so it's the same 0.81% upper bound for a thousand items or a billion.
+The sketch has one setting: the precision _p_, which gives 2^p registers and a relative standard error (stdErr) of 1.04/√(2^p). `hll.New()` uses p=14, a common default, with 0.81% error. With 1 million distinct items, about 68% of the time the estimate is within 0.81% (8,100) of the true count, 95% within 1.6% (2·stdErr), and 99.7% within 2.4% (3·stdErr). The error is relative to the count, so it's the same 0.81% upper bound for a thousand items or a billion.
 
 To trade accuracy for memory, use `hll.NewPrecision(p)` with p from 8 to 18. Each +2 to p halves the error and quadruples the memory:
 

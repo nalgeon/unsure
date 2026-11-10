@@ -66,7 +66,7 @@ The item's estimated count is the largest count among its buckets. Frequent item
 
 Next to the table, the sketch keeps a min-heap with the k items that have the largest estimates so far. After an item's buckets are updated, if its estimate is larger than the smallest count in the heap, the item is added to the heap, and the smallest item is removed. If the item is already in the heap, its count is increased.
 
-**This implementation** uses d = 2 rows of max(16k, 256) buckets, and a decay base of b = 0.5. With b = 0.5, decay is cheap: the count c decreases if the top c bits of a random number are all zero. Counts of 64 and above never decay. Each bucket is 8 bytes (a 32-bit fingerprint and a 32-bit count), so the table takes 256×k bytes. The heap takes about 100 bytes per item plus the item itself.
+**This implementation** uses d = 2 rows of max(16k, 256) buckets, and a decay base of b = 0.5. With b = 0.5, decay is cheap: the count c decreases if the top c bits of a random number are all zero. Counts of 64 and above never decay. Each bucket is 8 bytes (a 32-bit fingerprint and a 32-bit count), so the table takes 256·k bytes. The heap takes about 100 bytes per item plus the item itself.
 
 The item is hashed once. The hash is mapped to a position in each row by salting it (multiplying by a random per-row constant). The fingerprint is the top 32 bits of the hash. The heap uses the 64-bit hash to identify items, so it doesn't compare the actual item bytes. The heap only copies an item when it moves into the top k.
 
