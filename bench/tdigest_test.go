@@ -308,8 +308,7 @@ const tdMergeOthers = 8
 
 // BenchmarkTDigestMerge merges digests of 100K values each into one digest,
 // as when gathering digests from many sources. Each merge adds more values
-// to the receiver, so its centroids keep changing. influxdata merges into
-// a buffer and compresses (sorting everything) once it's full.
+// to the receiver, so its centroids keep changing.
 func BenchmarkTDigestMerge(b *testing.B) {
 	for _, delta := range tdBenchDelta {
 		for _, im := range tdImpls {

@@ -44,25 +44,25 @@ east.Merge(west)
 east.Quantile(0.99) // 99th percentile across both servers
 ```
 
-The digest has one setting: the compression _δ_, which limits the number of centroids (see the _How it works_ section) to δ+2. `tdigest.New()` uses δ=100, a common default, which takes 8 KB. To trade accuracy for memory, use `tdigest.NewCompression(δ)` with δ from 10 to 10,000.
+The digest has one setting: the compression _δ_, which limits the number of centroids (see _How it works_) to δ+2. `tdigest.New()` uses δ=100, a common default, which takes 8 KB. To trade accuracy for memory, use `tdigest.NewCompression(δ)` with δ from 10 to 10,000.
 
 The error is measured in ranks: a rank error of 0.03% at quantile q=0.99 means the value returned by `Quantile(0.99)` is somewhere between the 98.97th and the 99.03rd percentile of the actual values.
 
-Here's the mean rank error for 1M random values:
+Here's the mean rank error for 1M normally distributed values:
 
-| δ    | Memory | q=0.5  | q=0.99 | q=0.999 |
-| ---- | ------ | ------ | ------ | ------- |
-| 50   | 4 KB   | 0.06%  | 0.08%  | 0.04%   |
-| 100  | 8 KB   | 0.02%  | 0.03%  | 0.02%   |
-| 200  | 16 KB  | 0.012% | 0.011% | 0.007%  |
-| 500  | 40 KB  | 0.005% | 0.002% | 0.001%  |
-| 1000 | 80 KB  | 0.003% | 0.001% | 0.0005% |
+| δ    | Memory | q=0.5  | q=0.99  | q=0.999 |
+| ---- | ------ | ------ | ------- | ------- |
+| 50   | 4 KB   | 0.02%  | 0.05%   | 0.06%   |
+| 100  | 8 KB   | 0.009% | 0.015%  | 0.012%  |
+| 200  | 16 KB  | 0.008% | 0.007%  | 0.005%  |
+| 500  | 40 KB  | 0.003% | 0.001%  | 0.001%  |
+| 1000 | 80 KB  | 0.002% | 0.0009% | 0.0004% |
 
-The worst-case error is about twice the mean. Numbers added in sorted order give about 10× smaller errors, and merged digests give about 2× larger errors. At extreme quantiles, like q=0.0001 with δ=100, the error can be as large as q itself, so use a larger δ if you need them.
+The tails are usually more accurate than the median, except for small δ (tail estimates have a slight systematic bias; this bias quickly decreases as δ increases).
+
+The worst-case error is 2–3 times the mean. Merged digests give about 2× larger errors. At extreme quantiles, like q=0.0001 with δ=100, the error can be as large as q itself, so use a larger δ if you need them.
 
 `Quantile(0)` and `Quantile(1)` return the exact minimum and maximum of all added numbers. With few values (up to about δ/2), the estimates are exact. NaN and infinite values are ignored. The digest is deterministic: the same numbers added in the same order always produce the same digest.
-
-`Quantile` and `CDF` change the digest's internal state (see below), so a digest is not safe for concurrent use, even if all goroutines only read from it.
 
 ## How it works
 
@@ -108,7 +108,7 @@ Compared to [influxdata/tdigest](https://github.com/influxdata/tdigest) (merging
 |           | 100 |   **630** |  4,330 |   412,000 |
 |           | 500 | **2,720** | 23,950 | 5,560,000 |
 
-`Add` is measured on a digest that already holds 1M values, and includes the amortized cost of flushing the buffer. `Merge` merges a digest of 100K values into one of 1M or more.
+`Add` is measured on a digest that already holds 1M values, and includes the amortized cost of flushing the buffer. `Merge` merges digests of 100K values each, one after another, into a digest that starts with 1M values.
 
 _influxdata_'s default merge implementation (`AddCentroidList`) loses data: once its buffer is exactly full, it silently drops all further centroids until something calls a query or adds a single value. So in this benchmark, _influxdata_ merges by adding the other digest's centroids one by one (`AddCentroid`), to keep the logic correct.
 

@@ -12,18 +12,20 @@
 // The accuracy is set by the compression δ: 100 with [New], or between 10 and
 // 10000 with [NewCompression]. The error is measured in ranks: if Quantile(0.99)
 // has rank error 0.0003, the true rank of the returned value is between 0.9897
-// and 0.9903. Mean rank error for 1M random values (uniform, normal, lognormal),
+// and 0.9903. Mean rank error for 1M normally distributed values,
 // with the typical number of centroids and the memory used:
 //
-//	δ      centroids  memory   q=0.5    q=0.99   q=0.999
-//	50     31         4 KB     0.06%    0.08%    0.04%
-//	100    61         8 KB     0.02%    0.03%    0.02%   (default)
-//	200    118        16 KB    0.012%   0.011%   0.007%
-//	500    292        40 KB    0.005%   0.002%   0.001%
-//	1000   587        80 KB    0.003%   0.001%   0.0005%
+//	δ      centroids  memory   q=0.5    q=0.99    q=0.999
+//	50     31         4 KB     0.02%    0.05%     0.06%
+//	100    61         8 KB     0.009%   0.015%    0.012%   (default)
+//	200    118        16 KB    0.008%   0.007%    0.005%
+//	500    292        40 KB    0.003%   0.001%    0.001%
+//	1000   587        80 KB    0.002%   0.0009%   0.0004%
 //
-// The worst of 10 digests is about 2× the mean. Values added in sorted order
-// give about 10× smaller errors, and merged digests about 2× larger.
+// The tails are usually more accurate than the median, except for small δ.
+// The worst-case error is 2–3 times the mean. Merged digests give about
+// 2× larger errors.
+//
 // At extreme quantiles with default δ (q=0.0001 or 0.9999 at δ=100), the
 // outermost centroid holds more values than the quantile's rank, so the
 // rank error is about as large as q (or 1-q) itself.
@@ -91,7 +93,7 @@ type Digest struct {
 }
 
 // New creates a digest with the default compression δ=100:
-// 8 KB, mean rank error about 0.02% at the median and the 99th percentile.
+// 8 KB, mean rank error about 0.01% at the median and 0.015% at the 99th percentile.
 func New() *Digest {
 	return NewCompression(defaultDelta)
 }
