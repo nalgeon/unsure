@@ -4,9 +4,9 @@ A simple and fast t-digest implemented in Go.
 
 ## What is a t-digest
 
-A t-digest is a summary of a stream of numbers that trades accuracy for space. It can give you an approximate median, 99th percentile, or any other quantile of the data. It can also estimate what fraction of the numbers are below a certain value (the CDF). The digest doesn't actually store the numbers, so it's much more compact than a sorted list.
+A t-digest is a summary of a stream of numbers that trades accuracy for space. It can give you an approximate median, 99th percentile, or any other _quantile_ of the data. It can also estimate what fraction of the numbers are below a certain value (the CDF). The digest doesn't actually store the numbers, so it's much more compact than a sorted list.
 
-For example, to find the exact 99th percentile of 1,000,000 numbers, you'd have to keep all of them. With `[]float64`, that takes 8 MB. A t-digest estimates the same percentile within about 0.03% of the rank (between the 98.97th and the 99.03rd percentile) using only 8 KB — 1,000 times smaller. The size of the digest doesn't depend on the number of values, only on the accuracy you choose. An 8 KB digest summarizes a billion values as well as a million.
+For example, to find the exact 99th percentile of 1,000,000 numbers, you'd have to keep all of them. With 64-bit floats, that takes 8 MB. A t-digest estimates the same percentile within about 0.03% of the rank (between the 98.97th and the 99.03rd percentile) using only 8 KB — 1,000 times smaller. The size of the digest doesn't depend on the number of values, only on the accuracy you choose. An 8 KB digest summarizes a billion values as well as a million.
 
 A t-digest is useful when you need quantiles over a large stream: latency percentiles for a service, the distribution of request sizes or prices, or the outlier thresholds in sensor data. You can merge digests to gather data from multiple machines or segments (like by hour, endpoint, or region). A merged digest estimates the percentiles of all values, but with less accuracy than individual digests do.
 
@@ -14,7 +14,7 @@ You can add numbers to a digest, estimate quantiles and the CDF, and merge diges
 
 ## Usage
 
-```
+```text
 go get github.com/nalgeon/unsure
 ```
 
@@ -46,31 +46,19 @@ east.Quantile(0.99) // 99th percentile across both servers
 
 The digest has one setting: the compression _δ_, which limits the number of centroids (see _How it works_) to δ+2. `tdigest.New()` uses δ=100, a common default, which takes 8 KB. To trade accuracy for memory, use `tdigest.NewCompression(δ)` with δ from 10 to 10,000.
 
-The error is measured in ranks: a rank error of 0.03% at quantile q=0.99 means the value returned by `Quantile(0.99)` is somewhere between the 98.97th and the 99.03rd percentile of the actual values.
-
-Here's the mean rank error for 1M normally distributed values:
-
-| δ    | Memory | q=0.5  | q=0.99  | q=0.999 |
-| ---- | ------ | ------ | ------- | ------- |
-| 50   | 4 KB   | 0.02%  | 0.05%   | 0.06%   |
-| 100  | 8 KB   | 0.009% | 0.015%  | 0.012%  |
-| 200  | 16 KB  | 0.008% | 0.007%  | 0.005%  |
-| 500  | 40 KB  | 0.003% | 0.001%  | 0.001%  |
-| 1000 | 80 KB  | 0.002% | 0.0009% | 0.0004% |
-
-The tails are usually more accurate than the median, except for small δ (tail estimates have a slight systematic bias; this bias quickly decreases as δ increases).
-
-The worst-case error is 2–3 times the mean. Merged digests give about 2× larger errors. At extreme quantiles, like q=0.0001 with δ=100, the error can be as large as q itself, so use a larger δ if you need them.
+The error is measured in ranks: a rank error of 0.03% at quantile q=0.99 means the value returned by `Quantile(0.99)` is somewhere between the 98.97th and the 99.03rd percentile of the actual values. Tail estimates, such as q=0.99 or q=0.999, are more accurate than the median (q=0.5).
 
 `Quantile(0)` and `Quantile(1)` return the exact minimum and maximum of all added numbers. With few values (up to about δ/2), the estimates are exact. NaN and infinite values are ignored. The digest is deterministic: the same numbers added in the same order always produce the same digest.
 
 ## How it works
 
-**The t-digest** summarizes the numbers as a sorted list of _centroids_. Each centroid has a mean and a weight — the number of values it represents. To estimate a quantile, the digest finds the centroids around the requested rank and interpolates between their means.
+**T-digest** summarizes the numbers as a sorted list of _centroids_. Each centroid has a mean and a weight — the number of values it represents. To estimate a quantile, the digest finds the centroids around the requested rank and interpolates between their means.
 
-The trick is in how big the centroids are allowed to grow. A _scale function_ k(q) maps a quantile q to a number from -δ/4 to δ/4, and each centroid may only span 1 unit of k (if a centroid covers the quantiles from q₁ to q₂, then k(q₂) − k(q₁) ≤ 1). This implementation uses the arcsine scale function, k(q) = δ/(2π)·asin(2q-1), which is steep near q=0 and q=1 and flat near the median. So the centroids are large in the middle and small at the tails:
+The trick is in how big the centroids are allowed to grow. A _scale function_ k(q) maps a quantile _q_ to a number from -δ/4 to δ/4, and each centroid may only span 1 unit of k: if a centroid covers the quantiles from q₁ to q₂, then k(q₂) − k(q₁) ≤ 1.
 
-```
+The arcsine scale function, k(q) = δ/(2π)·asin(2q-1), is steep near q=0 and q=1 and flat near the median. This means the centroids it produces are larger in the center and smaller at the ends:
+
+```text
 weight
   │                ┌──┐
   │             ┌──┤  ├──┐
