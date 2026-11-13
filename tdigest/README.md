@@ -115,7 +115,7 @@ Memory at δ=100 (lower is better): _unsure_ 8.5 KB, _influxdata_ 14.4 KB, _caio
 
 _unsure_ and _influxdata_ are equally accurate for a single digest. After merging, they are within about 2× of each other either way, depending on the distribution and the quantile. _caio_ is 3–100× more accurate thanks to its 13× more centroids, but it takes 3.5× more memory and is 4–18× slower to add values and 11–210× slower to query.
 
-Overall, _unsure_ adds values 43% faster than _influxdata_, queries at the same speed, merges 7–9× faster, and uses 40% less memory at about the same accuracy.
+Overall, _unsure_ adds values about 1.8× faster than _influxdata_, queries at the same speed, merges 7–9× faster, and uses 40% less memory at about the same accuracy.
 
 To reproduce, run `make tdigest-bench-full` and `make tdigest-accuracy` from the repository root.
 

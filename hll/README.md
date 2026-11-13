@@ -21,7 +21,7 @@ go get github.com/nalgeon/unsure
 ```go
 import "github.com/nalgeon/unsure/hll"
 
-// Estimates within about 0.8% of the true count.
+// Standard error about 0.8% of the true count.
 sketch := hll.New()
 
 sketch.Add([]byte("alice"))
@@ -50,7 +50,7 @@ With p=14 and 1 million distinct items:
 - 95% within 1.6% (2·stdErr),
 - 99.7% within 2.4% (3·stdErr).
 
-The error is relative to the count, so it's the same 0.81% upper bound for a thousand items or a billion.
+The error is relative to the count, so the standard error is the same 0.81% for a thousand items or a billion.
 
 To trade accuracy for memory, use `hll.NewPrecision(p)` with p from 8 to 18. Each +2 to p halves the error and quadruples the memory:
 
@@ -132,7 +132,7 @@ Memory at p=14 after adding the given number of distinct items (lower is better)
 
 _unsure_ and _BoomFilters_ allocate all the registers upfront, so their size doesn't depend on the number of items. _axiomhq_ starts in sparse mode, keeping the hashes in a compressed list, and switches to registers once the list would outgrow them (between 3,000 and 10,000 items at p=14). The gap is larger for bigger sketches: at p=18, where the registers take 256 KB, _axiomhq_ takes 8.2 KB at 1,000 items, 40 KB at 10,000, and 208 KB at 100,000.
 
-Overall, _unsure_ adds about as fast as _axiomhq_ (27% faster when the sketch fits in L1, 3% slower at 256 KB), counts 270–83,000× faster, and merges 2.3–2.9× faster, with the same accuracy and memory for counts above the number of registers. When there are fewer items than registers, _axiomhq_'s sparse mode makes it more accurate and compact.
+Overall, _unsure_ adds about as fast as _axiomhq_, counts 270–83,000× faster, and merges 2.3–2.9× faster, with the same accuracy and memory for counts above the number of registers. When there are fewer items than registers, _axiomhq_'s sparse mode makes it more accurate and compact.
 
 To reproduce, run `make hll-bench-full` and `make hll-accuracy` from the repository root.
 

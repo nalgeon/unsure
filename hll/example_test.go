@@ -7,7 +7,7 @@ import (
 )
 
 func Example() {
-	// Estimates within about 0.8% of the true count.
+	// Standard error about 0.8% of the true count.
 	sketch := hll.New()
 
 	sketch.Add([]byte("alice"))
