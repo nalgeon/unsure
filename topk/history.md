@@ -105,3 +105,23 @@ The Add benchmark looked up `st.keys[st.events[i]]`: 1M separately allocated str
 | dgryski         | 110 → 58 | 146 → 71 | 124 → 72  |
 
 vs keiler: 2.1 / 2.9 / 4.4× faster Add (was 2.0 / 2.2 / 2.9×). Top unchanged. Earlier entries' Add numbers include ~45 ns of harness overhead; e.g. entry 4's 3-row cost (+~20 ns) is about +70% of the sketch's own time, not +25%.
+
+## 6. Decay base 0.8 via threshold table (2026-11-13)
+
+With b = 0.5, a bucket owned for a long time by a moderately frequent item becomes permanent (decay 2^-c ≈ 1e-6 at c = 20), so an item that becomes frequent late in the stream never gets counted, even if it ends up #2. E.g. k=100, Zipf s=1.0 warmup, then a new item at 1% of traffic for 2M events: missed in 5/5 seeds after a 1M warmup; keiler (b = 0.9) found it every time. New `TestTopKDrift`: after half the stream, k/10 new items with 2× the k-th count each. Fraction found (k = 10 / 100 / 1000) and p at s=0.6:
+
+| b               | found s=0.8        | found s=1.0        | p at s=0.6         | count err s=0.6 |
+| --------------- | ------------------ | ------------------ | ------------------ | --------------- |
+| 0.5             | 1.00 / 0.60 / 0.55 | 0.00 / 0.40 / 0.52 | 1.00 / 0.98 / 0.99 | ≤ 0.6%          |
+| 0.7             | 1.00 / 0.90 / 0.82 | 1.00 / 0.50 / 0.70 | 0.90 / 0.95 / 0.98 | 1–9%            |
+| 0.8             | 1.00 / 1.00 / 0.94 | 1.00 / 0.70 / 0.75 | 0.80 / 0.90 / 0.97 | 2–45%           |
+| 0.85            | 1.00 / 1.00 / 0.93 | 1.00 / 0.80 / 0.81 | 0.80 / 0.85 / 0.95 | 4–72%           |
+| 0.9             | 1.00 / 1.00 / 0.97 | 1.00 / 1.00 / 0.88 | 0.80 / 0.84 / 0.92 | 8–85%           |
+| 0.5, floor 1/16 | 1.00 / 0.90 / 0.85 | 1.00 / 0.70 / 0.74 | 1.00 / 0.97 / 0.98 | 8–39%           |
+| keiler (0.9)    | 1.00 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 | 0.80 / 0.34 / 0.70 | 61–94%          |
+
+At s ≥ 0.8, p ≥ 0.99 for all b. A floor on the probability (max(2^-c, p_min)) doesn't help: taking over a bucket costs ~c/p_min attempts, and old owners have large c, while the floor erodes every owner's count. Chose b = 0.8: a general-purpose sketch shouldn't silently miss its #2 item, while the flat-stream misses are near-ties at the k-th count.
+
+Decay check is now `rand() < thr[c]` with thr[c] = b^c·2^64 precomputed (199 entries, 0 beyond: counts ≥ 199 never decay), and ln(1 − b^c) precomputed for AddN. Same speed as the bit check at b = 0.5 (28.7 / 28.8 / 30.0 vs 29.1 / 28.8 / 29.8 ns in one session).
+
+Add 24 / 25 / 33 ns (b = 0.5: 29 / 29 / 30; the dynamics change, not the check), Top 0.34 / 3.7 / 75 µs. Precision s=0.6 / 0.8 / 1.0 at k=1000: 0.97 / 1.00 / 1.00, k=100: 0.90 / 1.00 / 0.99. Size unchanged (364 KB at k=1000).

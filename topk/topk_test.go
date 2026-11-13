@@ -233,10 +233,13 @@ func TestDeterministic(t *testing.T) {
 }
 
 // TestDecay checks that taking over a bucket with count c takes
-// 2^1 + ... + 2^c attempts on average, both with Add and AddN.
+// b^-1 + ... + b^-c attempts on average (b = decayBase), both with Add and AddN.
 func TestDecay(t *testing.T) {
 	const c = 6
-	const want = 1<<(c+1) - 2
+	want := 0.0
+	for j := 1; j <= c; j++ {
+		want += math.Pow(decayBase, -float64(j))
+	}
 	const trials = 4000
 	a, b := []byte("a"), []byte("b")
 	var addSum, addNSum float64
@@ -262,13 +265,13 @@ func TestDecay(t *testing.T) {
 		s.AddN(a, c)
 		const n = 1 << 20
 		s.AddN(b, n)
-		// b gets the attempts left after the one that zeroed the bucket.
-		addNSum += float64(n - s.buckets[0].count)
+		// b gets the attempts left including the one that zeroed the bucket.
+		addNSum += float64(n-s.buckets[0].count) + 1
 	}
-	// Each average has stddev ~ sqrt(sum 4^j)/sqrt(trials) ~ 1.2 (1% of want).
+	// Each average has stddev < 1% of want.
 	for _, got := range []float64{addSum / (2 * trials), addNSum / trials} {
-		if math.Abs(got-want) > 0.05*want {
-			t.Errorf("mean attempts = %.1f, want %d", got, want)
+		if math.Abs(got-want) > 0.03*want {
+			t.Errorf("mean attempts = %.2f, want %.2f", got, want)
 		}
 	}
 }
@@ -289,26 +292,27 @@ func TestAddNLarge(t *testing.T) {
 	if top := s.Top(); len(top) != 1 || top[0].Item != "b" || top[0].Count != max32 {
 		t.Errorf("Top = %v, want [b %d]", top, max32)
 	}
-	// Counts of 64 and more never decay, even with huge n.
+	// Counts of len(decayThr) and more never decay, even with huge n.
+	never := len(decayThr)
 	s = New(1)
 	narrow(s)
-	s.AddN(a, 64)
-	s.AddN(b, math.MaxInt-64)
-	if top := s.Top(); len(top) != 1 || top[0].Item != "a" || top[0].Count != 64 {
-		t.Errorf("Top = %v, want [a 64]", top)
+	s.AddN(a, never)
+	s.AddN(b, math.MaxInt-never)
+	if top := s.Top(); len(top) != 1 || top[0].Item != "a" || top[0].Count != never {
+		t.Errorf("Top = %v, want [a %d]", top, never)
 	}
 }
 
 func TestZeroEstimate(t *testing.T) {
-	// b's buckets are owned by a with counts of 64, which never decay,
-	// so b's estimate is 0 and it doesn't get into the heap.
+	// b's buckets are owned by a with counts of len(decayThr), which never
+	// decay, so b's estimate is 0 and it doesn't get into the heap.
 	s := New(10)
 	narrow(s)
-	s.AddN([]byte("a"), 64)
+	s.AddN([]byte("a"), len(decayThr))
 	s.AddN([]byte("b"), 1000)
 	checkInvariants(t, s)
 	if top := s.Top(); len(top) != 1 || top[0].Item != "a" {
-		t.Errorf("Top = %v, want [a 64]", top)
+		t.Errorf("Top = %v, want [a]", top)
 	}
 }
 

@@ -8,14 +8,16 @@
 //
 //   - If the bucket is empty or owned by the item, its count increases.
 //   - If it's owned by another item, its count decays (decreases by 1) with
-//     probability 2^-count. When the count reaches zero, the new item takes
+//     probability 0.8^count. When the count reaches zero, the new item takes
 //     over the bucket.
 //
 // The item's estimated count is the largest count among its buckets.
-// Frequent items quickly reach counts that make decay almost impossible,
+// Frequent items quickly reach counts that make decay very unlikely,
 // so they keep their buckets. Rare items keep replacing each other without
-// affecting the frequent ones. Unlike Count-min or Space-Saving methods
-// for Top-K, rare items don't artificially increase the counts of frequent items.
+// affecting the frequent ones. An item that becomes frequent later in the
+// stream can still outnumber a less frequent owner and take over its bucket.
+// Unlike Count-min or Space-Saving methods for Top-K, rare items don't
+// artificially increase the counts of frequent items.
 //
 // Counts are estimates: they're usually exact for the most frequent items,
 // but may be slightly lower than the actual count for less common items
@@ -23,8 +25,8 @@
 // capped at [math.MaxUint32] (about 4.3 billion).
 //
 // Accuracy depends on how skewed the stream is. For a Zipf distribution
-// over 1M items, the sketch finds the actual top k with ≥97% precision
-// for Zipf exponent s ≥ 0.6 and k in 10..1000, and ≥99% for s ≥ 0.8.
+// over 1M items, the sketch finds the actual top k with ≥99% precision
+// for Zipf exponent s ≥ 0.8 and k in 10..1000, and 80–97% for s = 0.6.
 // For flatter streams (where all items are about equally frequent),
 // there is no clear top k, and the results become less accurate.
 //
@@ -55,6 +57,28 @@ const (
 	widthFactor = 16
 	minWidth    = 256
 )
+
+// decayBase is the base of the decay probability: an attempt decays
+// a bucket with count c with probability decayBase^c.
+const decayBase = 0.8
+
+// decayThr[c] is decayBase^c scaled to 2^64: an attempt decays a bucket with
+// count c if a random uint64 is below it. It's 0 from about c=422, so the
+// table stops there and larger counts never decay. decayLog[c] is
+// ln(1 - decayBase^c), for drawing the number of attempts until a decay.
+var decayThr, decayLog = func() ([]uint64, []float64) {
+	thr := []uint64{math.MaxUint64} // count 0 is never decayed
+	logs := []float64{math.Inf(-1)}
+	for c := 1; ; c++ {
+		p := math.Pow(decayBase, float64(c))
+		t := uint64(math.Ldexp(p, 64))
+		if t == 0 {
+			return thr, logs
+		}
+		thr = append(thr, t)
+		logs = append(logs, math.Log1p(-p))
+	}
+}()
 
 // salts are random odd constants. Row i takes the top bits of the item's
 // hash times salts[i], so each row gets its own position from one hash.
@@ -262,24 +286,25 @@ func (s *Sketch) Size() int {
 }
 
 // decay makes n attempts to decay a bucket with a given count owned by another
-// item. Each attempt decrements the count with probability 2^-count (so counts
-// of 64 and above never decay). Returns the new count, and if it reached
-// zero, the number of attempts left including the one that zeroed it.
+// item. Each attempt decrements the count with probability decayBase^count
+// (counts of len(decayThr) and above never decay). Returns the new count,
+// and if it reached zero, the number of attempts left including the one
+// that zeroed it.
 func (s *Sketch) decay(count uint32, n uint64) (uint32, uint64) {
-	for n > 0 && count < 64 {
+	for n > 0 && count < uint32(len(decayThr)) {
 		// Number of attempts until the next decrement.
 		var t uint64
 		if n == 1 {
 			// Common case (Add): one attempt that succeeds
-			// if the top c bits of a random number are zero.
-			if s.rand()>>(64-count) != 0 {
+			// if a random number is below the threshold.
+			if s.rand() >= decayThr[count] {
 				return count, 0
 			}
 			t = 1
 		} else {
-			// Geometric distribution with p = 2^-c.
+			// Geometric distribution with p = decayBase^count.
 			u := float64(s.rand()>>11+1) / (1 << 53) // (0, 1]
-			tf := math.Floor(math.Log(u)/math.Log1p(-math.Ldexp(1, -int(count)))) + 1
+			tf := math.Floor(math.Log(u)/decayLog[count]) + 1
 			if tf > float64(n) {
 				return count, 0
 			}

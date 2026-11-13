@@ -130,4 +130,4 @@ topk-bench-full:
 
 # Precision, count error and memory of our Sketch vs the other libraries.
 topk-accuracy:
-	@go test -C bench -v -run '^TestTopKAccuracy$$' . | grep 'impl=' | sed 's/^.*_test.go:[0-9]*: //'
+	@go test -C bench -v -run '^TestTopK(Accuracy|Drift)$$' . | grep 'impl=' | sed 's/^.*_test.go:[0-9]*: //'
