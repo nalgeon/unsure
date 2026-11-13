@@ -4,11 +4,11 @@ A simple and fast Top-K sketch (HeavyKeeper) implemented in Go.
 
 ## What is a Top-K sketch
 
-A Top-K sketch finds the k most frequent items in a stream (the "heavy hitters"), along with their approximate counts. It uses a fixed amount of memory based only on k, no matter how many different items are in the stream.
+A Top-K sketch finds the _k most frequent_ items in a stream (the "heavy hitters"), along with their approximate counts. It uses a fixed amount of memory based only on k, no matter how many different items are in the stream.
 
 To find the exact top items, you'd have to count every unique item, for example with a map of per-item counts. With millions of distinct items, that takes tens or hundreds of megabytes. A Top-K sketch for the top 1000 items takes about 360 KB, and it usually finds all of them.
 
-A Top-K sketch is useful when you want to identify the "hottest" data: the most requested URLs, the most active users or IP addresses, or the most common search queries. Unlike a [count-min sketch](../countmin/README.md), it keeps the actual items, so it can list them.
+A Top-K sketch is useful when you want to identify the "hottest" data: the most requested URLs, the most active users, or the most common search queries. Unlike a [count-min sketch](../countmin/README.md), it keeps the actual items, so it can list them.
 
 The sketch works best when the stream is skewed, meaning a few items appear much more often than the others. This is common in real situations. If all items are about equally frequent, there is no clear top k, and the results become less accurate.
 
@@ -16,7 +16,7 @@ You can add items to the sketch and get the top items with their counts, but you
 
 ## Usage
 
-```
+```text
 go get github.com/nalgeon/unsure
 ```
 
@@ -44,19 +44,22 @@ The sketch is deterministic, so the same items added in the same order always pr
 
 ## How it works
 
-**HeavyKeeper** is a table of buckets that estimates item counts. It has d rows and w columns, and each item maps to one bucket in each row. Each bucket holds a fingerprint of the item and a count. To add an item, you update its bucket in each row:
+**HeavyKeeper** is a table of buckets that estimates item counts. It has _d_ rows and _w_ columns, and each item maps to one bucket in each row. Each bucket holds a fingerprint of the item and a count. To add an item, you update its bucket in each row:
 
 - If the bucket is empty or owned by the item, increase its count.
 - If the bucket is owned by another item, _decay_ it: decrease its count by 1 with probability b^count (b < 1). When the count reaches 0, the new item takes over the bucket with a count of 1.
 
-```
-add x ──► hash ──► fingerprint 7 ──┐
-                   │               │
+```text
+          ┌──────┐
+add x ──► │ hash │──► h ──► high 32 bits ──► fingerprint = 7
+          └──────┘    │
+                      │ map to buckets
+                   ┌──┴────────────┐
        ┌───────┬───▼───┬───────┬───│───┬───────┐
 row 1  │       │ fp=7  │ fp=3  │   │   │ fp=5  │  column 2 is owned by x:
        │       │  41   │   2   │   │   │  980  │  41 → 42
        ├───────┼───────┼───────┼───▼───┼───────┤
-row 2  │ fp=9  │       │       │ fp=2  │ fp=4  │  column 4 is owned by another item:
+row 2  │ fp=9  │       │       │ fp=2  │ fp=4  │  column 4 is owned by another:
        │  17   │       │       │   3   │   1   │  3 → 2 with probability b^3
        └───────┴───────┴───────┴───────┴───────┘
          col 1   col 2   col 3   col 4   col 5
@@ -66,14 +69,14 @@ The item's estimated count is the largest count among its buckets. Frequent item
 
 Next to the table, the sketch keeps a min-heap with the k items that have the largest estimates so far. After an item's buckets are updated, if its estimate is larger than the smallest count in the heap, the item is added to the heap, and the smallest item is removed. If the item is already in the heap, its count is increased.
 
-```
+```text
                    ┌───────────┐
 add x (15) ───────►│ bob    12 │  the root has the smallest count
                    └─────┬─────┘
-              ┌──────────┴──────────┐
-        ┌─────┴─────┐         ┌─────┴─────┐
-        │ alice  30 │         │ dave   14 │  15 > 12: x replaces bob at the root
-        └─────┬─────┘         └───────────┘  15 > 14: x moves down, dave moves up
+              ┌──────────┴────────┐
+        ┌─────┴─────┐       ┌─────┴─────┐
+        │ alice  30 │       │ dave   14 │  15 > 12: x replaces bob at the root
+        └─────┬─────┘       └───────────┘  15 > 14: x moves down, dave moves up
       ┌───────┴──────┐
 ┌─────┴─────┐  ┌─────┴─────┐
 │ eve   980 │  │ fay    41 │
@@ -91,6 +94,17 @@ The sketch uses [wyhash](https://github.com/wangyi-fudan/wyhash) for hashing and
 ## Benchmarks
 
 Compared to [keilerkonzept/topk](https://github.com/keilerkonzept/topk) (HeavyKeeper with b = 0.9, d = ln k rows of k·ln k buckets, default settings) and [dgryski/go-topk](https://github.com/dgryski/go-topk) (Filtered Space-Saving). Space-Saving needs more monitored items than k to be accurate, so _dgryski_ monitors 3k items and reports the top k of them. Apple M1, 10M events over 1M distinct 16-byte items with a Zipf distribution.
+
+Speed on the Zipf s=0.8 stream (lower is better):
+
+| Operation |    k |      unsure |  keiler | dgryski |
+| --------- | ---: | ----------: | ------: | ------: |
+| Add       |   10 |   **29 ns** |   64 ns |   59 ns |
+|           |  100 |   **29 ns** |   84 ns |   70 ns |
+|           | 1000 |   **30 ns** |  130 ns |   73 ns |
+| Top       |   10 | **0.35 µs** | 0.64 µs | 0.77 µs |
+|           |  100 |  **3.8 µs** |   13 µs |   14 µs |
+|           | 1000 |   **72 µs** |  270 µs |  292 µs |
 
 Precision is the fraction of the reported top k that is in the true top k (higher is better):
 
@@ -115,17 +129,6 @@ Count error is the mean of |estimate − true| / true over the reported items (l
 | 1000 |    0.6 |  **0.5%** |    62% |       18× |
 |      |    0.8 | **0.06%** |   1.9% |     0.31% |
 |      |    1.0 | **0.02%** |  0.24% | **0.02%** |
-
-Speed on the Zipf s=0.8 stream (lower is better):
-
-| Operation |    k |      unsure |  keiler | dgryski |
-| --------- | ---: | ----------: | ------: | ------: |
-| Add       |   10 |   **29 ns** |   64 ns |   59 ns |
-|           |  100 |   **29 ns** |   84 ns |   70 ns |
-|           | 1000 |   **30 ns** |  130 ns |   73 ns |
-| Top       |   10 | **0.35 µs** | 0.64 µs | 0.77 µs |
-|           |  100 |  **3.8 µs** |   13 µs |   14 µs |
-|           | 1000 |   **72 µs** |  270 µs |  292 µs |
 
 Overall, _unsure_ is 2–4× faster than the others for Add and 1.8–4× faster for Top. It finds the true top k with ≥98% precision and counts with <1% error even on flat streams. On flat streams, _keiler_ drops to 38–70% precision with a count error of 62–94%, and _dgryski_ to 19–52% with counts 18× or more too high. On skewed streams (s=1.0), all three are about equally accurate.
 
