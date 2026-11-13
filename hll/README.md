@@ -4,7 +4,7 @@ A simple and fast HyperLogLog implemented in Go.
 
 ## What is HyperLogLog
 
-HyperLogLog is a unique items counter that trades accuracy for space. It tells you approximately how many _different_ items it has seen, no matter how many times each one appeared. HyperLogLog (also called a _sketch_ from here on) doesn't actually store the items, so it's much more compact than a regular set.
+HyperLogLog is a unique items counter that trades accuracy for space. It tells you approximately how many _distinct items_ it has seen, no matter how many times each one appeared. HyperLogLog (also called a _sketch_ from here on) doesn't actually store the items, so it's much more compact than a regular set.
 
 For example, a regular set of 1,000,000 distinct 8-byte strings takes about 64 MB. A HyperLogLog sketch counting the same strings with about 0.8% error uses only 16 KB — that's almost 4,000 times smaller. The size of the sketch doesn't depend on the number of items or their size, only on the accuracy you choose. A 16 KB sketch counts a billion items as accurately as a thousand.
 
@@ -14,7 +14,7 @@ You can add items to a sketch, get the estimated count, and merge sketches. You 
 
 ## Usage
 
-```
+```text
 go get github.com/nalgeon/unsure
 ```
 
@@ -42,7 +42,15 @@ home.Merge(docs)
 home.Count() // visitors to either page
 ```
 
-The sketch has one setting: the precision _p_, which gives a relative standard error (stdErr) of 1.04/√(2^p). `hll.New()` uses p=14, a common default, with 0.81% error. With 1 million distinct items, about 68% of the time the estimate is within 0.81% (8,100) of the true count, 95% within 1.6% (2·stdErr), and 99.7% within 2.4% (3·stdErr). The error is relative to the count, so it's the same 0.81% upper bound for a thousand items or a billion.
+The sketch has one setting: the precision _p_, which gives a relative standard error (stdErr) of 1.04/√(2^p). `hll.New()` uses p=14, a common default, with 0.81% error.
+
+With p=14 and 1 million distinct items:
+
+- 68% of the time the estimate is within 0.81% (8,100) of the true count,
+- 95% within 1.6% (2·stdErr),
+- 99.7% within 2.4% (3·stdErr).
+
+The error is relative to the count, so it's the same 0.81% upper bound for a thousand items or a billion.
 
 To trade accuracy for memory, use `hll.NewPrecision(p)` with p from 8 to 18. Each +2 to p halves the error and quadruples the memory:
 
@@ -59,11 +67,11 @@ Sketches can only be merged if they have the same precision. The sketch is deter
 
 ## How it works
 
-**The HyperLogLog** is based on a simple observation. If you hash items to random bit strings, about half of them start with 1, a quarter with 01, an eighth with 001, and so on. Seeing a hash with k leading zeros suggests there were about 2^(k+1) distinct items. Duplicates hash to the same value, so they don't affect the result.
+**HyperLogLog** is based on a simple observation. If you hash items to random bit strings, about half of them start with 1, a quarter with 01, an eighth with 001, and so on. Seeing a hash with _k_ leading zeros suggests there were about 2^(k+1) distinct items. Duplicates hash to the same value, so they don't affect the result.
 
-A single observation is unreliable, so the sketch divides the items into m = 2^p groups, where p is the selected precision. The first p bits of the hash pick a group (a _register_), and the register keeps the highest _rank_ (leading zeros plus one) it has seen in the rest of the hash:
+A single observation is unreliable, so the sketch divides the items into m = 2^p groups, where _p_ is the selected precision. The first p bits of the hash pick a group (a _register_), and the register keeps the highest _rank_ (leading zeros plus one) it has seen in the rest of the hash:
 
-```
+```text
         ┌──────┐   ┌──────────┬────────────────────────┐
 item ──►│ hash │──►│ 01101001 │ 0001101...             │
         └──────┘   └────┬─────┴───────────┬────────────┘
