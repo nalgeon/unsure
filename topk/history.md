@@ -1,4 +1,4 @@
-# Top-K history
+# Top-k history
 
 Benchmarks: `make topk-bench`, Apple M1, 16-byte keys, Zipf s=0.8 stream (sketch warmed up with 1M events). ns/op for Add and µs/op for Top at k = 10 / 100 / 1000.
 Accuracy: `make topk-accuracy`, 10M events over 1M items, Zipf with shuffled ranks. p = precision of the reported top k (fraction whose true count ≥ the true k-th count, so boundary ties don't count as misses), at s = 0.6 / 0.8 / 1.0 for k=1000, and retained size at k=1000.

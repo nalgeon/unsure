@@ -16,7 +16,7 @@
 // so they keep their buckets. Rare items keep replacing each other without
 // affecting the frequent ones. An item that becomes frequent later in the
 // stream can still outnumber a less frequent owner and take over its bucket.
-// Unlike Count-min or Space-Saving methods for Top-K, rare items don't
+// Unlike Count-min or Space-Saving methods for Top-k, rare items don't
 // artificially increase the counts of frequent items.
 //
 // Counts are estimates: they're usually exact for the most frequent items,

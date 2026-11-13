@@ -1,14 +1,14 @@
-# Top-K
+# Top-k sketch
 
-A simple and fast Top-K sketch (HeavyKeeper) implemented in Go.
+A simple and fast Top-k sketch (HeavyKeeper) implemented in Go.
 
-## What is a Top-K sketch
+## What is a Top-k sketch
 
-A Top-K sketch finds the _k most frequent_ items in a stream (the "heavy hitters"), along with their approximate counts. It uses a fixed amount of memory based only on k, no matter how many different items are in the stream.
+A Top-k sketch finds the _k most frequent_ items in a stream (the "heavy hitters"), along with their approximate counts. It uses a fixed amount of memory based only on k, no matter how many different items are in the stream.
 
-To find the exact top items, you'd have to count every unique item, for example with a map of per-item counts. With millions of distinct items, that takes tens or hundreds of megabytes. A Top-K sketch for the top 1000 items takes about 360 KB, and it usually finds all of them.
+To find the exact top items, you'd have to count every unique item, for example with a map of per-item counts. With millions of distinct items, that takes tens or hundreds of megabytes. A Top-k sketch for the top 1000 items takes about 360 KB, and it usually finds all of them.
 
-A Top-K sketch is useful when you want to identify the "hottest" data: the most requested URLs, the most active users, or the most common search queries. Unlike a [count-min sketch](../countmin/README.md), it keeps the actual items, so it can list them.
+A Top-k sketch is useful when you want to identify the "hottest" data: the most requested URLs, the most active users, or the most common search queries. Unlike a [count-min sketch](../countmin/README.md), it keeps the actual items, so it can list them.
 
 The sketch works best when the stream is skewed, meaning a few items appear much more often than the others. This is common in real situations. If all items are about equally frequent, there is no clear top k, and the results become less accurate.
 
@@ -65,7 +65,7 @@ row 2  │ fp=9  │       │       │ fp=2  │ fp=4  │  column 4 is owned 
          col 1   col 2   col 3   col 4   col 5
 ```
 
-The item's estimated count is the largest count among its buckets. Frequent items quickly reach counts that make decay very unlikely, so they keep their buckets. Rare items keep replacing each other without affecting the frequent ones. An item that becomes frequent later in the stream can still outnumber a less frequent owner and take over its bucket. Unlike some other Top-K implementations, rare items don't artificially increase the counts of frequent items.
+The item's estimated count is the largest count among its buckets. Frequent items quickly reach counts that make decay very unlikely, so they keep their buckets. Rare items keep replacing each other without affecting the frequent ones. An item that becomes frequent later in the stream can still outnumber a less frequent owner and take over its bucket. Unlike some other Top-k implementations, rare items don't artificially increase the counts of frequent items.
 
 Next to the table, the sketch keeps a min-heap with the k items that have the largest estimates so far. After an item's buckets are updated, if its estimate is larger than the smallest count in the heap, the item is added to the heap, and the smallest item is removed. If the item is already in the heap, its count is increased.
 
