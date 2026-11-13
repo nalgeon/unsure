@@ -16,7 +16,7 @@ You can increase the per-item counter in a sketch and get the estimated count fo
 
 ## Usage
 
-```
+```text
 go get github.com/nalgeon/unsure
 ```
 
@@ -36,7 +36,7 @@ sketch.Count([]byte("carol")) // 0 (or, rarely, more)
 sketch.Total()                // 4
 ```
 
-The sketch uses two settings: epsilon _ε_ and delta _δ_. If the actual count for any given item is X and the total of all counts is N, then the estimated count for this item will usually be between X and X+ε·N. However, rarely (with a probability of δ) the estimate could be even higher. For example, if ε is 0.001, δ is 0.01, and N is 1 million, then the estimate could be off by up to 1,000 with at least 99% probability, and by more than 1,000 with at most 1% probability.
+The sketch uses two settings: epsilon _ε_ and delta _δ_. If the actual count for any given item is X and the total of all counts is N, then the estimated count for this item will usually be between X and X+ε·N. However, rarely (with a probability of δ) the estimate could be even higher. For example, if ε is 0.001, δ is 0.01, and N is 1 million, then the estimate could be off by up to 1,000 (ε·N) with at least 99% probability (1−δ), and by more than 1,000 with at most 1% probability (δ).
 
 Choose ε to be smaller than the smallest fraction of N that matters to you. A common choice for δ is 0.01. Making δ even smaller is pretty cheap, since the sketch size only grows with ln(1/δ).
 
@@ -46,9 +46,9 @@ The sketch is deterministic, so the same items always produce the same sketch. T
 
 ## How it works
 
-**The count-min sketch** is a table of counters with d rows and w columns, all starting at zero. Each row uses its own hash function that maps an item to one of the w counters. To add an item, you increment its counter in each row:
+**Count-min sketch** is a table of counters with _d_ rows and _w_ columns, all starting at zero. Each row uses its own hash function that maps an item to one of the w counters. To add an item, you increment its counter in each row:
 
-```
+```text
         ┌──────┐                       ┌───────┐
 item ──►│ hash │──► h1, h2, ..., hd ──►│ mod w │──► i1, i2, ..., id
         └──────┘                       └───────┘
@@ -68,7 +68,7 @@ To estimate an item's count, you take the smallest value from its d counters:
 - Other items might hash to the same counter, so each counter value is ≥ true count.
 - The smallest counter is the one with the fewest collisions, so it's the best estimate.
 
-```
+```text
        ┌───┬───┬─▼─┬───┬───┬───┬───┬───┬───┬───┐
 row 1  │ 0 │ 2 │ 4 │ 0 │ 1 │ 0 │ 0 │ 3 │ 0 │ 1 │  4
        ├───┼───┼───┼───┼───┼───┼─▼─┼───┼───┼───┤
@@ -82,7 +82,7 @@ With w = e/ε columns, each counter's error is at most ε·N, with probability a
 
 **This implementation** uses a _conservative update_. When you add n to an item, it first finds the current estimate E (the smallest counter), then increases only the counters that are below E+n, leaving the larger ones unchanged. This keeps the same accuracy guarantee, but the actual error is several times lower. The tradeoff is that counts can't be decreased.
 
-```
+```text
        ┌───┬───┬─▼─┬───┬───┬───┬───┬───┬───┬───┐
 row 1  │ 0 │ 2 │ 4 │ 0 │ 1 │ 0 │ 0 │ 3 │ 0 │ 1 │  4 → 4
        ├───┼───┼───┼───┼───┼───┼─▼─┼───┼───┼───┤
@@ -94,7 +94,7 @@ row d  │ 0 │ 1 │ 0 │ 2 │ 0 │ 0 │ 1 │ 0 │ 5 │ 0 │  5 → 5
 
 Counters are 32-bit instead of the usual 64-bit, so the sketch uses 2× less memory. The item is hashed once, and each row gets its own position from that hash by salting it (multiplying by a random per-row constant).
 
-```
+```text
         ┌──────┐         ┌─────────┐
 item ──►│ hash │──► h ──►│ × salts │──► i1, i2, ..., id
         └──────┘         └─────────┘
@@ -106,14 +106,14 @@ The sketch uses [wyhash](https://github.com/wangyi-fudan/wyhash) for hashing.
 
 Compared to [tylertreat/BoomFilters](https://github.com/tylertreat/BoomFilters) (a classic count-min sketch with 64-bit counters). Apple M1, δ=0.01, 16-byte items, ns/op (lower is better):
 
-| Operation |        ε | Size (unsure) |  unsure | BoomFilters |
-| --------- | -------: | ------------: | ------: | ----------: |
-| Add       |    0.001 |         55 KB |  **13** |          19 |
-|           |  0.00001 |        5.4 MB |  **17** |          32 |
-|           | 0.000001 |         54 MB |  **81** |          98 |
-| Count     |    0.001 |         55 KB | **8.8** |          51 |
-|           |  0.00001 |        5.4 MB |  **14** |          64 |
-|           | 0.000001 |         54 MB |  **52** |         139 |
+| Operation |        ε | Size (unsure) | unsure | BoomFilters |
+| --------- | -------: | ------------: | -----: | ----------: |
+| Add       |    0.001 |         55 KB | **13** |          19 |
+|           |  0.00001 |        5.4 MB | **17** |          32 |
+|           | 0.000001 |         54 MB | **81** |          98 |
+| Count     |    0.001 |         55 KB |  **9** |          51 |
+|           |  0.00001 |        5.4 MB | **14** |          64 |
+|           | 0.000001 |         54 MB | **52** |         139 |
 
 Accuracy at ε=0.0001, N=10M additions over 1M distinct items, mean overestimate (lower is better). The error bound ε·N is 1,000:
 
@@ -124,7 +124,7 @@ Accuracy at ε=0.0001, N=10M additions over 1M distinct items, mean overestimate
 | Zipf, s = 1.5 |    **0.3** |         0.8 |
 | Size          | **536 KB** |     1080 KB |
 
-Overall, unsure is about 2.5× faster than BoomFilters (up to 5× for Count), using 2× less memory with 2–2.7× lower error.
+Overall, _unsure_ is about 1.5× faster than _BoomFilters_ for Add and 4× faster for Count, using 2× less memory with 2–2.7× lower error.
 
 To reproduce, run `make countmin-bench-full` and `make countmin-accuracy` from the repository root.
 
