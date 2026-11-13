@@ -14,7 +14,7 @@ You can add an item to a Bloom filter and check if an item is in the filter, but
 
 ## Usage
 
-```
+```text
 go get github.com/nalgeon/unsure
 ```
 
@@ -38,9 +38,9 @@ can artificially increase false positives.
 
 ## How it works
 
-**The classic Bloom filter** is a large array of m bits, all set to zero at first. To add an item, you compute k hash values for it and set the k bits at those positions:
+**Bloom filter** is a large array of _m_ bits, all set to zero at first. To add an item, you compute _k_ hash values for it and set the k bits at those positions:
 
-```
+```text
         ┌──────┐                       ┌───────┐
 item ──►│ hash │──► h1, h2, ..., hk ──►│ mod m │──► i1, i2, ..., ik
         └──────┘                       └───────┘
@@ -57,15 +57,15 @@ To check if an item is in the filter, you compute the same k hashes and check if
 - If any of the bits is not set, the item definitely was never added.
 - If all the bits are set, the item was probably added, but it's not guaranteed (the bits could have been set by other items).
 
-```
+```text
           i1          i2                  ik
 ┌───┬───┬─▼─┬───┬───┬─▼─┬───┬───┬───┬───┬─▼─┬───┐
 │ 1 │ 0 │ 1 │ 0 │ 0 │ 1 │ 1 │ 0 │ 1 │ 0 │ 1 │ 0 │  all 1 → probably in the set
 └───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
 
 ┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┐
-│ 1 │ 0 │ 1 │ 0 │ 0 │ 0 │ 1 │ 0 │ 1 │ 0 │ 1 │ 0 │  any 0 → definitely not in the set
-└───┴───┴───┴───┴───┴─▲─┴───┴───┴───┴───┴───┴───┘
+│ 1 │ 0 │ 1 │ 0 │ 0 │ 0 │ 1 │ 0 │ 1 │ 0 │ 1 │ 0 │  any 0 → definitely not
+└───┴───┴───┴───┴───┴─▲─┴───┴───┴───┴───┴───┴───┘          in the set
                      (!)
 ```
 
@@ -73,7 +73,7 @@ The k bits are randomly distributed throughout the entire array. When the filter
 
 **This implementation** is a _blocked_ Bloom filter. The bit array is divided into 512-bit blocks, each matching the size of a CPU cache line. When you add or check an item, it is hashed once: part of the hash selects a block, and the rest selects k bits within that block. Each add or check only accesses one cache line, so the filter stays fast even when it's very large.
 
-```
+```text
         ┌──────┐         ┌──► high 32 bits ──► block
 item ──►│ hash │──► h ───┤                   ┌─────────┐
         └──────┘         └──► low 32 bits ──►│ × salts │──► i1, i2, ..., ik
@@ -100,17 +100,17 @@ The filter uses [wyhash](https://github.com/wangyi-fudan/wyhash) for hashing.
 
 Compared to [bits-and-blooms/bloom](https://github.com/bits-and-blooms/bloom) (a classic Bloom filter) and [jcalabro/gloom](https://github.com/jcalabro/gloom) (a blocked one). Apple M1, false positive rate 1%, 16-byte items, ns/op (lower is better):
 
-| Operation      | Items |  unsure | bits-and-blooms | gloom |
-| -------------- | ----: | ------: | --------------: | ----: |
-| Add            |   10K | **8.5** |              37 |    17 |
-|                |    1M | **9.7** |              36 |    19 |
-|                |   50M |  **38** |             170 |    63 |
-| Contains, hit  |   10K | **8.0** |              32 |    16 |
-|                |    1M | **8.8** |              32 |    18 |
-|                |   50M |  **34** |             129 |    60 |
-| Contains, miss |   10K | **8.0** |              41 |    27 |
-|                |    1M | **8.8** |              48 |    33 |
-|                |   50M |  **34** |             113 |    60 |
+| Operation      | Items | unsure | bits-and-blooms | gloom |
+| -------------- | ----: | -----: | --------------: | ----: |
+| Add            |   10K |  **9** |              37 |    17 |
+|                |    1M | **10** |              36 |    19 |
+|                |   50M | **38** |             170 |    63 |
+| Contains, hit  |   10K |  **8** |              32 |    16 |
+|                |    1M |  **9** |              32 |    18 |
+|                |   50M | **34** |             129 |    60 |
+| Contains, miss |   10K |  **8** |              41 |    27 |
+|                |    1M |  **9** |              48 |    33 |
+|                |   50M | **34** |             113 |    60 |
 
 Memory, bits per item at 10M items (lower is better):
 
