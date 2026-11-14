@@ -1,0 +1,120 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/nalgeon/unsure/bench
+cpu: Apple M1
+BenchmarkLoghistAdd/err=0.01/impl=hdr-8         	 1000000	         5.328 ns/op
+BenchmarkLoghistAdd/err=0.01/impl=hdr-8         	 1000000	         4.258 ns/op
+BenchmarkLoghistAdd/err=0.01/impl=hdr-8         	 1000000	         4.058 ns/op
+BenchmarkLoghistAdd/err=0.01/impl=hdr-8         	 1000000	         4.028 ns/op
+BenchmarkLoghistAdd/err=0.01/impl=hdr-8         	 1000000	         3.978 ns/op
+BenchmarkLoghistAdd/err=0.01/impl=hdr-8         	 1000000	         4.019 ns/op
+BenchmarkLoghistAdd/err=0.01/impl=dd-8          	 1000000	        19.16 ns/op
+BenchmarkLoghistAdd/err=0.01/impl=dd-8          	 1000000	        18.97 ns/op
+BenchmarkLoghistAdd/err=0.01/impl=dd-8          	 1000000	        19.00 ns/op
+BenchmarkLoghistAdd/err=0.01/impl=dd-8          	 1000000	        18.97 ns/op
+BenchmarkLoghistAdd/err=0.01/impl=dd-8          	 1000000	        19.33 ns/op
+BenchmarkLoghistAdd/err=0.01/impl=dd-8          	 1000000	        18.89 ns/op
+BenchmarkLoghistAdd/err=0.004/impl=hdr-8        	 1000000	         3.945 ns/op
+BenchmarkLoghistAdd/err=0.004/impl=hdr-8        	 1000000	         3.951 ns/op
+BenchmarkLoghistAdd/err=0.004/impl=hdr-8        	 1000000	         4.058 ns/op
+BenchmarkLoghistAdd/err=0.004/impl=hdr-8        	 1000000	         3.984 ns/op
+BenchmarkLoghistAdd/err=0.004/impl=hdr-8        	 1000000	         4.013 ns/op
+BenchmarkLoghistAdd/err=0.004/impl=hdr-8        	 1000000	         3.972 ns/op
+BenchmarkLoghistAdd/err=0.004/impl=dd-8         	 1000000	        18.98 ns/op
+BenchmarkLoghistAdd/err=0.004/impl=dd-8         	 1000000	        18.92 ns/op
+BenchmarkLoghistAdd/err=0.004/impl=dd-8         	 1000000	        19.09 ns/op
+BenchmarkLoghistAdd/err=0.004/impl=dd-8         	 1000000	        19.12 ns/op
+BenchmarkLoghistAdd/err=0.004/impl=dd-8         	 1000000	        18.91 ns/op
+BenchmarkLoghistAdd/err=0.004/impl=dd-8         	 1000000	        18.96 ns/op
+BenchmarkLoghistAdd/err=0.001/impl=hdr-8        	 1000000	         3.959 ns/op
+BenchmarkLoghistAdd/err=0.001/impl=hdr-8        	 1000000	         3.938 ns/op
+BenchmarkLoghistAdd/err=0.001/impl=hdr-8        	 1000000	         4.038 ns/op
+BenchmarkLoghistAdd/err=0.001/impl=hdr-8        	 1000000	         3.967 ns/op
+BenchmarkLoghistAdd/err=0.001/impl=hdr-8        	 1000000	         4.056 ns/op
+BenchmarkLoghistAdd/err=0.001/impl=hdr-8        	 1000000	         3.966 ns/op
+BenchmarkLoghistAdd/err=0.001/impl=dd-8         	 1000000	        19.39 ns/op
+BenchmarkLoghistAdd/err=0.001/impl=dd-8         	 1000000	        19.38 ns/op
+BenchmarkLoghistAdd/err=0.001/impl=dd-8         	 1000000	        19.34 ns/op
+BenchmarkLoghistAdd/err=0.001/impl=dd-8         	 1000000	        19.13 ns/op
+BenchmarkLoghistAdd/err=0.001/impl=dd-8         	 1000000	        19.03 ns/op
+BenchmarkLoghistAdd/err=0.001/impl=dd-8         	 1000000	        19.42 ns/op
+PASS
+ok  	github.com/nalgeon/unsure/bench	1.555s
+goos: darwin
+goarch: arm64
+pkg: github.com/nalgeon/unsure/bench
+cpu: Apple M1
+BenchmarkLoghistQuantile/err=0.01/impl=hdr-8         	 4120582	       283.0 ns/op
+BenchmarkLoghistQuantile/err=0.01/impl=hdr-8         	 4191740	       282.2 ns/op
+BenchmarkLoghistQuantile/err=0.01/impl=hdr-8         	 4259551	       280.8 ns/op
+BenchmarkLoghistQuantile/err=0.01/impl=hdr-8         	 4290836	       280.4 ns/op
+BenchmarkLoghistQuantile/err=0.01/impl=hdr-8         	 4170990	       283.1 ns/op
+BenchmarkLoghistQuantile/err=0.01/impl=hdr-8         	 4232720	       284.8 ns/op
+BenchmarkLoghistQuantile/err=0.01/impl=dd-8          	  668650	      1752 ns/op
+BenchmarkLoghistQuantile/err=0.01/impl=dd-8          	  686259	      1749 ns/op
+BenchmarkLoghistQuantile/err=0.01/impl=dd-8          	  681824	      1748 ns/op
+BenchmarkLoghistQuantile/err=0.01/impl=dd-8          	  685178	      1748 ns/op
+BenchmarkLoghistQuantile/err=0.01/impl=dd-8          	  685496	      1750 ns/op
+BenchmarkLoghistQuantile/err=0.01/impl=dd-8          	  682756	      1802 ns/op
+BenchmarkLoghistQuantile/err=0.004/impl=hdr-8        	  711454	      1692 ns/op
+BenchmarkLoghistQuantile/err=0.004/impl=hdr-8        	  714818	      1698 ns/op
+BenchmarkLoghistQuantile/err=0.004/impl=hdr-8        	  711481	      1693 ns/op
+BenchmarkLoghistQuantile/err=0.004/impl=hdr-8        	  716283	      1718 ns/op
+BenchmarkLoghistQuantile/err=0.004/impl=hdr-8        	  705772	      1725 ns/op
+BenchmarkLoghistQuantile/err=0.004/impl=hdr-8        	  711546	      1735 ns/op
+BenchmarkLoghistQuantile/err=0.004/impl=dd-8         	  387444	      3109 ns/op
+BenchmarkLoghistQuantile/err=0.004/impl=dd-8         	  387150	      3091 ns/op
+BenchmarkLoghistQuantile/err=0.004/impl=dd-8         	  387238	      3120 ns/op
+BenchmarkLoghistQuantile/err=0.004/impl=dd-8         	  390061	      3078 ns/op
+BenchmarkLoghistQuantile/err=0.004/impl=dd-8         	  389866	      3113 ns/op
+BenchmarkLoghistQuantile/err=0.004/impl=dd-8         	  389455	      3087 ns/op
+BenchmarkLoghistQuantile/err=0.001/impl=hdr-8        	  715562	      1735 ns/op
+BenchmarkLoghistQuantile/err=0.001/impl=hdr-8        	  697834	      1792 ns/op
+BenchmarkLoghistQuantile/err=0.001/impl=hdr-8        	  666855	      1712 ns/op
+BenchmarkLoghistQuantile/err=0.001/impl=hdr-8        	  690099	      1698 ns/op
+BenchmarkLoghistQuantile/err=0.001/impl=hdr-8        	  699708	      1712 ns/op
+BenchmarkLoghistQuantile/err=0.001/impl=hdr-8        	  707403	      1701 ns/op
+BenchmarkLoghistQuantile/err=0.001/impl=dd-8         	  100836	     12789 ns/op
+BenchmarkLoghistQuantile/err=0.001/impl=dd-8         	   99717	     12006 ns/op
+BenchmarkLoghistQuantile/err=0.001/impl=dd-8         	  101252	     12117 ns/op
+BenchmarkLoghistQuantile/err=0.001/impl=dd-8         	  100693	     11893 ns/op
+BenchmarkLoghistQuantile/err=0.001/impl=dd-8         	  100621	     11903 ns/op
+BenchmarkLoghistQuantile/err=0.001/impl=dd-8         	  101046	     11927 ns/op
+BenchmarkLoghistMerge/err=0.01/impl=hdr-8            	   73208	     16362 ns/op
+BenchmarkLoghistMerge/err=0.01/impl=hdr-8            	   73093	     16362 ns/op
+BenchmarkLoghistMerge/err=0.01/impl=hdr-8            	   73209	     16359 ns/op
+BenchmarkLoghistMerge/err=0.01/impl=hdr-8            	   73246	     16466 ns/op
+BenchmarkLoghistMerge/err=0.01/impl=hdr-8            	   73273	     16375 ns/op
+BenchmarkLoghistMerge/err=0.01/impl=hdr-8            	   72958	     16432 ns/op
+BenchmarkLoghistMerge/err=0.01/impl=dd-8             	 3992096	       300.6 ns/op
+BenchmarkLoghistMerge/err=0.01/impl=dd-8             	 3974996	       301.4 ns/op
+BenchmarkLoghistMerge/err=0.01/impl=dd-8             	 3993937	       301.0 ns/op
+BenchmarkLoghistMerge/err=0.01/impl=dd-8             	 3999322	       316.6 ns/op
+BenchmarkLoghistMerge/err=0.01/impl=dd-8             	 3922059	       303.3 ns/op
+BenchmarkLoghistMerge/err=0.01/impl=dd-8             	 3873211	       306.6 ns/op
+BenchmarkLoghistMerge/err=0.004/impl=hdr-8           	   10000	    115240 ns/op
+BenchmarkLoghistMerge/err=0.004/impl=hdr-8           	   10000	    115671 ns/op
+BenchmarkLoghistMerge/err=0.004/impl=hdr-8           	   10000	    114927 ns/op
+BenchmarkLoghistMerge/err=0.004/impl=hdr-8           	   10000	    114744 ns/op
+BenchmarkLoghistMerge/err=0.004/impl=hdr-8           	   10000	    114622 ns/op
+BenchmarkLoghistMerge/err=0.004/impl=hdr-8           	   10000	    115176 ns/op
+BenchmarkLoghistMerge/err=0.004/impl=dd-8            	 1509991	       793.8 ns/op
+BenchmarkLoghistMerge/err=0.004/impl=dd-8            	 1506956	       801.1 ns/op
+BenchmarkLoghistMerge/err=0.004/impl=dd-8            	 1500781	       804.8 ns/op
+BenchmarkLoghistMerge/err=0.004/impl=dd-8            	 1448899	       832.6 ns/op
+BenchmarkLoghistMerge/err=0.004/impl=dd-8            	 1444978	       832.6 ns/op
+BenchmarkLoghistMerge/err=0.004/impl=dd-8            	 1507201	       811.3 ns/op
+BenchmarkLoghistMerge/err=0.001/impl=hdr-8           	    9741	    115636 ns/op
+BenchmarkLoghistMerge/err=0.001/impl=hdr-8           	   10000	    114765 ns/op
+BenchmarkLoghistMerge/err=0.001/impl=hdr-8           	   10000	    114844 ns/op
+BenchmarkLoghistMerge/err=0.001/impl=hdr-8           	   10000	    115089 ns/op
+BenchmarkLoghistMerge/err=0.001/impl=hdr-8           	   10000	    115108 ns/op
+BenchmarkLoghistMerge/err=0.001/impl=hdr-8           	   10000	    114947 ns/op
+BenchmarkLoghistMerge/err=0.001/impl=dd-8            	  422239	      2838 ns/op
+BenchmarkLoghistMerge/err=0.001/impl=dd-8            	  417970	      2859 ns/op
+BenchmarkLoghistMerge/err=0.001/impl=dd-8            	  417082	      2868 ns/op
+BenchmarkLoghistMerge/err=0.001/impl=dd-8            	  419241	      2865 ns/op
+BenchmarkLoghistMerge/err=0.001/impl=dd-8            	  417556	      2864 ns/op
+BenchmarkLoghistMerge/err=0.001/impl=dd-8            	  420003	      2854 ns/op
+PASS
+ok  	github.com/nalgeon/unsure/bench	88.305s
