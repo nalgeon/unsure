@@ -221,6 +221,78 @@ func TestAllRanks(t *testing.T) {
 	}
 }
 
+// naiveQuantile finds the bucket of rank k with a plain linear scan
+// in ascending order, as a reference for Quantile's two-ended block scan.
+func naiveQuantile(h *Histogram, q float64) float64 {
+	k := uint64(float64(q * float64(h.count-1)))
+	if k == 0 {
+		return h.min
+	}
+	if k >= h.count-1 {
+		return h.max
+	}
+	var cum uint64
+	for j := len(h.neg.counts) - 1; j >= 0; j-- {
+		cum += h.neg.counts[j]
+		if cum > k {
+			return h.clamp(-h.value(h.neg.offset + j))
+		}
+	}
+	cum += h.zero
+	if cum > k {
+		return h.clamp(0)
+	}
+	for j, c := range h.pos.counts {
+		cum += c
+		if cum > k {
+			return h.clamp(h.value(h.pos.offset + j))
+		}
+	}
+	return h.max
+}
+
+// TestQuantileScan checks that Quantile finds the same bucket as a linear
+// scan at every rank, including one-sided data where the scan from either
+// end crosses empty stores and zeros.
+func TestQuantileScan(t *testing.T) {
+	const n = 1000
+	neg := func(xs []float64) []float64 {
+		for i := range xs {
+			xs[i] = -xs[i]
+		}
+		return xs
+	}
+	withZeros := func(xs []float64) []float64 {
+		for i := range xs {
+			if i%3 == 0 {
+				xs[i] = 0
+			}
+		}
+		return xs
+	}
+	sets := map[string][]float64{
+		"positive":       makeValues("lognormal", 3, n),
+		"negative":       neg(makeValues("lognormal", 3, n)),
+		"positive+zeros": withZeros(makeValues("lognormal", 3, n)),
+		"negative+zeros": withZeros(neg(makeValues("lognormal", 3, n))),
+		"mixed+zeros":    withZeros(makeValues("normal", 3, n)),
+		"zeros":          make([]float64, n),
+		"wide":           makeValues("wide", 3, n),
+	}
+	for name, xs := range sets {
+		for _, relErr := range []float64{0.1, 0.01, 0.001} {
+			h := NewError(relErr)
+			fill(h, xs)
+			for k := range n {
+				q := float64(k) / float64(n-1)
+				if got, want := h.Quantile(q), naiveQuantile(h, q); got != want {
+					t.Errorf("%s relErr=%v: Quantile(%v) = %v, want %v", name, relErr, q, got, want)
+				}
+			}
+		}
+	}
+}
+
 // TestCDF checks that CDF(x) is off by at most the values
 // within the relative error of x.
 func TestCDF(t *testing.T) {

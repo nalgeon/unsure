@@ -101,7 +101,7 @@ sign   exponent     top m   rest of the mantissa
 
 `Add` finds the bucket for the given number and increases the count. If the bucket is outside the bucket array, it grows the array. `Merge` adds the counts bucket by bucket.
 
-`Quantile` adds up the counts from the most negative bucket until it reaches the rank, and returns the estimate for that bucket, limited to the exact minimum and maximum. `CDF` adds up the counts in the buckets below x, plus part of x's own bucket, assuming its values are spread evenly.
+`Quantile` adds up the counts from the closer end (the most negative bucket for q ≤ 0.5, the most positive one otherwise) until it reaches the rank. It returns the estimate for that bucket, limited to the exact minimum and maximum. `CDF` adds up the counts in the buckets below x, plus part of x's own bucket, assuming its values are spread evenly.
 
 The number of mantissa bits m comes from the requested error: `NewError(e)` picks the smallest m for which the maximum error doesn't exceed e. The default is m=7: 128 buckets per octave and an error of 0.39%.
 
@@ -134,17 +134,17 @@ The _Error_ column is the requested relative error. _hdr_'s precision is set in 
 
 Speed on Apple M1, ns/op (lower is better):
 
-| Operation | Error |    unsure |     hdr |        dd |
-| --------- | ----: | --------: | ------: | --------: |
-| Add       |    1% |     **4** |   **4** |        19 |
-|           |  0.4% |     **4** |   **4** |        19 |
-|           |  0.1% |     **4** |   **4** |        19 |
-| Quantile  |    1% |   **180** |     283 |     1,750 |
-|           |  0.4% |   **333** |   1,708 |     3,100 |
-|           |  0.1% | **1,273** |   1,712 |    11,967 |
-| Merge     |    1% |   **334** |  16,369 |   **302** |
-|           |  0.4% |   **657** | 115,052 |       808 |
-|           |  0.1% |     3,249 | 115,018 | **2,862** |
+| Operation | Error |  unsure |     hdr |        dd |
+| --------- | ----: | ------: | ------: | --------: |
+| Add       |    1% |   **4** |   **4** |        19 |
+|           |  0.4% |   **4** |   **4** |        19 |
+|           |  0.1% |   **4** |   **4** |        19 |
+| Quantile  |    1% |  **48** |     283 |     1,750 |
+|           |  0.4% |  **90** |   1,708 |     3,100 |
+|           |  0.1% | **337** |   1,712 |    11,967 |
+| Merge     |    1% | **334** |  16,369 |   **302** |
+|           |  0.4% | **657** | 115,052 |       808 |
+|           |  0.1% |   3,249 | 115,018 | **2,862** |
 
 `Add` is measured on a histogram that already has 1M values. `Merge` merges histograms of 100K values each, one after another, into a histogram that starts with 1M values.
 
@@ -167,7 +167,7 @@ Memory after adding 1M values (lower is better):
 
 At 0.4%, _hdr_ is the most accurate because with 3 significant digits it actually works at about 0.1%, using 19× more memory. At 1% and 0.1%, _unsure_ and _hdr_ have the same maximum error: _hdr_'s buckets are twice as narrow, but it returns the highest value of a bucket instead of its middle. _dd_ is 1.4–3× less accurate than _unsure_, and uses 10–30% less memory thanks to its logarithmic buckets.
 
-Overall, _unsure_ adds values as fast as _hdr_ and 5× faster than _dd_, queries 1.3–5× faster than _hdr_ and about 9× faster than _dd_, and merges about as fast as _dd_ and 35–175× faster than _hdr_.
+Overall, _unsure_ adds values as fast as _hdr_ and 5× faster than _dd_, queries 5–19× faster than _hdr_ and about 35× faster than _dd_, and merges about as fast as _dd_ and 35–175× faster than _hdr_.
 
 To reproduce, run `make loghist-bench-full` and `make loghist-accuracy` from the repository root.
 

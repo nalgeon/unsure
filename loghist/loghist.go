@@ -140,7 +140,7 @@ func (h *Histogram) Count() int {
 }
 
 // Quantile returns the estimated value X such that q proportion of
-// the data values are less than or equal. to X The estimate is within
+// the data values are less than or equal to X. The estimate is within
 // the relative error of the true value. Quantile(0) and Quantile(1) are
 // the exact minimum and maximum.
 //
@@ -158,27 +158,12 @@ func (h *Histogram) Quantile(q float64) float64 {
 	if k >= h.count-1 {
 		return h.max
 	}
-	// Find the bucket holding the value of rank k: negative values
-	// from the largest absolute value down, then zeros, then positive ones.
-	var cum uint64
-	neg := h.neg.counts
-	for j := len(neg) - 1; j >= 0; j-- {
-		cum += neg[j]
-		if cum > k {
-			return h.clamp(-h.value(h.neg.offset + j))
-		}
+	// Find the bucket holding the value of rank k, scanning from the
+	// closer end: high quantiles, the most common ones, are near the top.
+	if k > (h.count-1)/2 {
+		return h.clamp(h.fromTop(h.count - 1 - k))
 	}
-	cum += h.zero
-	if cum > k {
-		return h.clamp(0)
-	}
-	for j, c := range h.pos.counts {
-		cum += c
-		if cum > k {
-			return h.clamp(h.value(h.pos.offset + j))
-		}
-	}
-	return h.max
+	return h.clamp(h.fromBottom(k))
 }
 
 // CDF returns the estimated fraction of values less than x, where values
@@ -246,6 +231,79 @@ func (h *Histogram) merge(s, o *store) {
 // Size returns the memory used by the histogram's buckets, in bytes.
 func (h *Histogram) Size() int {
 	return 8 * (cap(h.pos.counts) + cap(h.neg.counts))
+}
+
+// fromBottom returns the estimate for the value of rank k, counting from 0
+// in ascending order: negative values from the largest absolute value
+// down, then zeros, then positive values.
+func (h *Histogram) fromBottom(k uint64) float64 {
+	j, k := scanDown(h.neg.counts, k)
+	if j >= 0 {
+		return -h.value(h.neg.offset + j)
+	}
+	if k < h.zero {
+		return 0
+	}
+	j, _ = scanUp(h.pos.counts, k-h.zero)
+	return h.value(h.pos.offset + j)
+}
+
+// fromTop returns the estimate for the value of rank k, counting from 0
+// in descending order: positive values from the largest down, then zeros,
+// then negative values.
+func (h *Histogram) fromTop(k uint64) float64 {
+	j, k := scanDown(h.pos.counts, k)
+	if j >= 0 {
+		return h.value(h.pos.offset + j)
+	}
+	if k < h.zero {
+		return 0
+	}
+	j, _ = scanUp(h.neg.counts, k-h.zero)
+	return -h.value(h.neg.offset + j)
+}
+
+// scanUp returns the index of the bucket holding the value of rank k,
+// counting from 0 from the first bucket. If counts hold k values or fewer,
+// returns len(counts) and k minus their total.
+func scanUp(counts []uint64, k uint64) (int, uint64) {
+	j := 0
+	for ; j < len(counts); j += 8 {
+		b := (*[8]uint64)(counts[j:])
+		s := (b[0] + b[1]) + (b[2] + b[3]) + (b[4] + b[5]) + (b[6] + b[7])
+		if s > k {
+			break
+		}
+		k -= s
+	}
+	for ; j < len(counts); j++ {
+		if counts[j] > k {
+			return j, 0
+		}
+		k -= counts[j]
+	}
+	return j, k
+}
+
+// scanDown is like scanUp, counting from the last bucket.
+// Returns -1 and k minus the total if counts hold k values or fewer.
+func scanDown(counts []uint64, k uint64) (int, uint64) {
+	j := len(counts)
+	for ; j > 0; j -= 8 {
+		b := (*[8]uint64)(counts[j-8:])
+		s := (b[0] + b[1]) + (b[2] + b[3]) + (b[4] + b[5]) + (b[6] + b[7])
+		if s > k {
+			break
+		}
+		k -= s
+	}
+	for j--; j >= 0; j-- {
+		if counts[j] > k {
+			return j, 0
+		}
+		k -= counts[j]
+	}
+	return j, k
 }
 
 // below returns the estimated number of values in s less than x > 0,

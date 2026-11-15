@@ -24,3 +24,13 @@ Design: bucket = float64 bits >> (52−m), i.e. exponent + top m mantissa bits, 
 vs HDR: Add −0..−8%, Quantile −26..−81%, Merge 35–175× faster, 5–21% of HDR's memory (it allocates the whole 1 ns – 1 h range upfront). At 1% and 0.1%, same max error (0.54 / 0.068%): HDR buckets are 2× narrower, but it returns their upper end; at 0.4% HDR uses 3 digits, so it's 4× more accurate with 19× more memory. vs DDSketch: Add 5× faster, Quantile 9–10× faster, Merge about the same, error 1.4–3× lower but memory +11..+93% (log mapping needs ln 2/ln γ buckets per octave, ~1.44× fewer, and its paginated store skips empty pages).
 
 Our t-digest (δ=100, 8.5 KB) for comparison, mean relative value error at q = 0.5 / 0.99 / 0.999 / 0.9999: lognormal 0.13 / 1.7 / 8.8 / 82%, Pareto α=1.5 0.10 / 5.8 / 68 / 871%, uniform 0.008 / 0.015 / 0.009 / 0.004%. Small rank error doesn't bound the value error in a heavy tail; loghist at 1% (8.1 KB) stays under 0.62% everywhere.
+
+## 2. Quantile: scan from the closer end, 8-bucket blocks
+
+Design: for rank k > (n−1)/2, scan from the top (positives descending → zero → negatives) to rank n−1−k, otherwise from the bottom as before. Sum counts in blocks of 8 buckets (stores are octave-aligned and 2^m ≥ 8, so blocks cover them exactly), and only look at single buckets in the block that holds the rank. No change to Add, Merge or state.
+
+| Add             | Quantile      | Merge            | Error (mean)           | Max    | Size    |
+| --------------- | ------------- | ---------------- | ---------------------- | ------ | ------- |
+| 4.4 / 3.6 / 3.6 | 48 / 90 / 337 | 330 / 650 / 3.4k | 0.095 / 0.112 / 0.158% | 0.251% | 14.1 KB |
+
+Quantile 3.7× faster: closer end alone −31..−40% (121 / 213 / 766), blocks another 2.4×. vs HDR 5–19× faster, vs DDSketch ~35×. Blocks of 16 save another 10–17% but no longer line up with octaves at m=3; kept 8.
