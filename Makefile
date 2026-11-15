@@ -12,7 +12,7 @@ FUZZTIME ?= 2m
 .PHONY: countmin-test countmin-bench countmin-bench-ref countmin-bench-full countmin-accuracy
 .PHONY: hll-test hll-bench hll-bench-ref hll-bench-full hll-accuracy
 .PHONY: loghist-test loghist-bench loghist-bench-ref loghist-bench-full loghist-accuracy loghist-fuzz
-.PHONY: tdigest-test tdigest-bench tdigest-bench-ref tdigest-bench-full tdigest-accuracy
+.PHONY: tdigest-test tdigest-bench tdigest-bench-ref tdigest-bench-full tdigest-accuracy tdigest-fuzz
 .PHONY: topk-test topk-bench topk-bench-ref topk-bench-full topk-accuracy
 
 # Run the tests: our Filter, then the size comparison against other libraries.
@@ -141,6 +141,10 @@ tdigest-bench-full:
 # Rank error and memory of our Digest vs the other libraries.
 tdigest-accuracy:
 	@go test -C bench -v -run '^TestTDigest(Accuracy|Size)$$' . | grep -E 'rank err|KB' | sed 's/^.*_test.go:[0-9]*: //'
+
+# Fuzz against the sorted values.
+tdigest-fuzz:
+	@go test ./tdigest -run '^$$' -fuzz '^FuzzDigest$$' -fuzztime $(FUZZTIME)
 
 # Run the tests: our Sketch, then the accuracy comparison against other libraries.
 topk-test:

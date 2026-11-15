@@ -57,6 +57,11 @@ const (
 	maxDelta     = 10000
 )
 
+// maxValue is the largest magnitude of values the digest accepts. Sums of
+// offsets times weights stay below 2·maxValue·2^53 ≈ 1.8e306, so they
+// can't overflow.
+const maxValue = 1e290
+
 // bufFactor is the buffer size relative to the compression.
 // Larger buffers make flushes less frequent, which amortizes the merge pass
 // (about 0.6·δ output centroids) over more values.
@@ -118,10 +123,11 @@ func NewCompression(delta int) *Digest {
 	}
 }
 
-// Add adds a value to the digest. NaN and infinite values are ignored.
+// Add adds a value to the digest. NaN, infinite values
+// and values beyond ±1e290 are ignored.
 func (d *Digest) Add(x float64) {
-	// x-x is NaN for NaN and ±Inf, 0 otherwise.
-	if x-x != 0 {
+	// False for NaN, ±Inf and huge values.
+	if !(math.Abs(x) <= maxValue) {
 		return
 	}
 	d.buf = append(d.buf, x)
@@ -227,17 +233,19 @@ func (d *Digest) CDF(x float64) float64 {
 	}
 	total := d.total
 	// Tails: interpolate between the min/max (a single value) and the
-	// first/last centroid's center. A centroid of weight 1 is at the
-	// min/max itself, so x is not in the tail.
+	// first/last centroid's center. A first/last centroid of weight 1 is
+	// usually the min/max itself, but after merging it can be the value
+	// next to it, with the min/max inside another centroid. Then CDF stays
+	// at the centroid's mid-rank up to the min/max.
 	first, last := cs[0], cs[n-1]
 	if x < first.mean {
-		if x == d.min {
+		if x == d.min || first.weight == 1 {
 			return 0.5 / total
 		}
 		return (1 + (x-d.min)/(first.mean-d.min)*(first.weight/2-1)) / total
 	}
 	if x > last.mean {
-		if x == d.max {
+		if x == d.max || last.weight == 1 {
 			return 1 - 0.5/total
 		}
 		return 1 - (1+(d.max-x)/(d.max-last.mean)*(last.weight/2-1))/total
@@ -267,7 +275,9 @@ func (d *Digest) CDF(x float64) float64 {
 	}
 	dw := (left.weight+right.weight)/2 - leftEx - rightEx
 	base := d.cum[i] + left.weight/2 + leftEx
-	return (base + dw*(x-left.mean)/(right.mean-left.mean)) / total
+	// The fraction first: it's at most 1, so the result doesn't
+	// exceed the next centroid's value due to rounding.
+	return (base + dw*((x-left.mean)/(right.mean-left.mean))) / total
 }
 
 // Merge adds the values of other to d, so that d estimates the quantiles

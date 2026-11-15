@@ -187,11 +187,11 @@ func TestSingle(t *testing.T) {
 
 func TestInvalid(t *testing.T) {
 	d := New()
-	for _, x := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
+	for _, x := range []float64{math.NaN(), math.Inf(1), math.Inf(-1), 1.0000001e290, -math.MaxFloat64} {
 		d.Add(x)
 	}
 	if c := d.Count(); c != 0 {
-		t.Errorf("Count = %d after adding NaN and Inf", c)
+		t.Errorf("Count = %d after adding NaN, Inf and huge values", c)
 	}
 	d.Add(1)
 	d.Add(2)
