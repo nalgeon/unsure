@@ -62,9 +62,9 @@ const (
 // alphaInf is the asymptotic bias correction constant 1/(2 ln 2).
 const alphaInf = 0.7213475204444817
 
-// ErrPrecisionMismatch is returned by [Sketch.Merge] when
+// ErrMismatch is returned by [Sketch.Merge] when
 // the sketches have different precisions.
-var ErrPrecisionMismatch = errors.New("hll: sketches have different precisions")
+var ErrMismatch = errors.New("hll: sketches have different precisions")
 
 // Sketch estimates the number of distinct items added to it.
 //
@@ -144,10 +144,10 @@ func (s *Sketch) Count() int {
 
 // Merge adds the items of other to s, so that s estimates the number of
 // distinct items added to either. Other is unchanged.
-// Returns [ErrPrecisionMismatch] if the sketches have different precisions.
+// Returns [ErrMismatch] if the sketches have different precisions.
 func (s *Sketch) Merge(other *Sketch) error {
 	if s.p != other.p {
-		return ErrPrecisionMismatch
+		return ErrMismatch
 	}
 	// Compare 8 registers at a time. Registers are below 128, so in
 	// (x | 0x80…) - y each byte is x+128-y without borrowing from the next,

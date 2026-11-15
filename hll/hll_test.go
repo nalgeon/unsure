@@ -277,8 +277,8 @@ func TestMergeRegisters(t *testing.T) {
 
 func TestMergeMismatch(t *testing.T) {
 	a := New()
-	if err := a.Merge(NewPrecision(defaultP + 1)); err != ErrPrecisionMismatch {
-		t.Errorf("different precisions: want ErrPrecisionMismatch, got %v", err)
+	if err := a.Merge(NewPrecision(defaultP + 1)); err != ErrMismatch {
+		t.Errorf("different precisions: want ErrMismatch, got %v", err)
 	}
 }
 
