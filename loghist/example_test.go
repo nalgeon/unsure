@@ -32,6 +32,19 @@ func ExampleNewError() {
 	// 2 123.456
 }
 
+func ExampleNewRange() {
+	// Response times in seconds: 1 µs to 1 hour with 1% error.
+	// Faster responses count as zero, slower ones as overflow.
+	hist := loghist.NewRange(0.01, 1e-6, 3600)
+	hist.Add(0.25)
+	hist.Add(1e-9) // counts as zero
+	hist.Add(5000) // overflow
+	fmt.Printf("min %g, median %.2f, max %g\n",
+		hist.Quantile(0), hist.Quantile(0.5), hist.Quantile(1))
+	// Output:
+	// min 1e-09, median 0.25, max 5000
+}
+
 func ExampleHistogram_Merge() {
 	// Latencies measured on two servers, summarized separately.
 	east := loghist.New()
@@ -42,7 +55,9 @@ func ExampleHistogram_Merge() {
 	}
 
 	// Latencies across both servers.
-	east.Merge(west)
+	if err := east.Merge(west); err != nil {
+		panic(err)
+	}
 	fmt.Println(east.Count(), east.Quantile(0), east.Quantile(1))
 	// Output:
 	// 200 1 200

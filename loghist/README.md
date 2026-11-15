@@ -1,5 +1,7 @@
 # Log-linear histogram
 
+> 🚧 This data structure is a work in progress.
+
 A log-linear histogram is a summary of a stream of numbers that trades accuracy for space. It can give you an approximate median, 99th percentile, or any other _quantile_ of the data. It can also estimate what fraction of the numbers are below a certain value (the CDF). The histogram doesn't actually store the numbers, so it's much more compact than a sorted list.
 
 For example, to find the exact 99.9th percentile of 1,000,000 response times, you'd have to keep all of them. With 64-bit floats, that takes 8 MB. A log-linear histogram estimates the same percentile within 0.39% of its true value using about 14 KB — almost 600 times less.
@@ -42,7 +44,7 @@ east.Merge(west)
 east.Quantile(0.99) // 99th percentile across both servers
 ```
 
-The histogram has one setting: the relative error. `loghist.New()` uses the default error of 0.0039 (0.39%). To trade accuracy for memory, use `loghist.NewError(e)` with the error value from 0.0001 to 0.1. The histogram doesn't use the given value exactly, but picks the largest error from the series 5.9%, 3%, 1.5%, 0.78%, 0.39%, 0.2%, 0.098%, ... (about half the previous one each time) that doesn't exceed the requested error. Only histograms with the same error can be merged.
+The histogram has two settings: the relative error and the range of values. `loghist.New()` uses the default error of 0.0039 (0.39%) and the default range from 1e-9 to 1e18. To trade accuracy for memory, use `loghist.NewError(e)` with the error value from 0.0001 to 0.1. The histogram doesn't use the given value exactly, but picks the largest error from the series 5.9%, 3%, 1.5%, 0.78%, 0.39%, 0.2%, 0.098%, ... (about half the previous one each time) that doesn't exceed the requested error. Only histograms with the same error and range can be merged.
 
 Memory depends on the error and on the range of the values. For example, for values from 1 to 1,000,000:
 
@@ -54,11 +56,15 @@ Memory depends on the error and on the range of the values. For example, for val
 |           0.001 |       0.098% |  80 KB |
 |          0.0001 |      0.0061% | 1.3 MB |
 
-Memory grows when you add a value that's outside the current range, and it never shrinks. So adding a value that's far from the others can use a lot of memory. For example, adding 1e-300 to a set of values from 1 to 1,000,000 uses about 1 MB more memory.
+Memory grows when you add a value that's outside the current range, and it never shrinks. The range of values limits how much it can grow. By default, the error guarantee applies to absolute values from 1e-9 to 1e18. This range covers latencies measured in seconds or nanoseconds, as well as sizes in bytes.
+
+With the default settings, values smaller than 1e-9 are treated as zero. Values ≥1e18 or ≤1e18 are treated as overflow: if a quantile lands on them, `Quantile` returns the exact maximum (or minimum). This way, the default histogram never uses more than 90 KB for positive values and 90 KB for negative values, no matter what you add.
+
+To set a different range, use `loghist.NewRange(e, lo, hi)`. For example, `NewRange(0.01, 1e-6, 3600)` is for response times in seconds, from 1 µs to 1 hour, with a 1% error. `NewRange(e, 0, math.Inf(1))` covers all float64 values, but then memory is unbounded: adding 1e-300 to a set of values from 1 to 1,000,000 uses about 1 MB more memory.
 
 `Quantile(q)` returns the estimated value X such that q proportion of the data values are less than or equal to X. `Quantile(0)` and `Quantile(1)` return the exact minimum and maximum.
 
-Zero and numbers closer to zero than 2.2e-308 are counted as zero. NaN and infinite values are ignored. The order in which values are added doesn't matter: the same values always produce the same histogram.
+NaN and infinite values are ignored. The order in which values are added doesn't matter: the same values always produce the same histogram.
 
 ## How it works
 
@@ -105,7 +111,7 @@ sign   exponent     top m   rest of the mantissa
 
 The number of mantissa bits m comes from the requested error: `NewError(e)` picks the smallest m for which the maximum error doesn't exceed e. The default is m=7: 128 buckets per octave and an error of 0.39%.
 
-The counts are 64-bit numbers in two arrays: one for positive values, and one for negative values by their absolute value. Zeros are counted separately. Unlike _HdrHistogram_, the arrays don't cover a fixed range. They start empty and grow by whole octaves to include the values that are actually added. So the histogram accepts any float64 and only uses memory for the range of the data: 2^m counts of 8 bytes per octave (1 KB for m=7).
+The counts are 64-bit numbers in two arrays: one for positive values, and one for negative values by their absolute value. Out-of-range values are counted separately. Unlike _HdrHistogram_, the arrays don't cover a fixed range. Instead, they start empty and grow by whole octaves to include the values that are actually added. So the histogram accepts any float64 and only uses memory for the range of the data: 2^m counts of 8 bytes per octave (1 KB for m=7).
 
 ## Log-linear histogram vs. t-digest
 

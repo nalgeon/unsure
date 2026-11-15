@@ -40,6 +40,12 @@ func makeValues(dist string, seed uint64, n int) []float64 {
 
 var dists = []string{"uniform", "normal", "lognormal", "pareto", "wide", "discrete"}
 
+// newFull creates a histogram over the whole float64 range, for test data
+// beyond the default range of 1e-9 to 1e18.
+func newFull(relErr float64) *Histogram {
+	return NewRange(relErr, 0, math.Inf(1))
+}
+
 func fill(h *Histogram, xs []float64) {
 	for _, x := range xs {
 		h.Add(x)
@@ -171,11 +177,108 @@ func TestZero(t *testing.T) {
 	}
 	h.Add(-1)
 	h.Add(1)
-	if got := h.Quantile(0.5); got != 0 {
-		t.Errorf("Quantile(0.5) = %v, want 0", got)
+	// Rank 2 is found from the bottom, rank 3 from the top.
+	for _, q := range []float64{0.5, 0.6} {
+		if got := h.Quantile(q); got != 0 || math.Signbit(got) {
+			t.Errorf("Quantile(%v) = %v, want +0", q, got)
+		}
 	}
 	if got := h.CDF(0); got != 0.5 {
 		t.Errorf("CDF(0) = %v, want 0.5", got)
+	}
+}
+
+func TestNewRangePanics(t *testing.T) {
+	tests := [][3]float64{
+		{0, 1, 2}, {0.01, -1, 2}, {0.01, 2, 2}, {0.01, 3, 2},
+		{0.01, math.NaN(), 2}, {0.01, 1, math.NaN()}, {0.01, math.Inf(1), math.Inf(1)},
+	}
+	for _, tt := range tests {
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Errorf("NewRange(%v, %v, %v) did not panic", tt[0], tt[1], tt[2])
+				}
+			}()
+			NewRange(tt[0], tt[1], tt[2])
+		}()
+	}
+}
+
+// TestRange checks that values outside [lo, hi) count as zero or overflow,
+// don't use memory, and that quantiles on them return 0, min or max.
+func TestRange(t *testing.T) {
+	h := NewRange(0.01, 1, 100)
+	// Zero: below lo, including subnormals.
+	for _, x := range []float64{0, 0.5, -0.999, 5e-324} {
+		h.Add(x)
+	}
+	// Overflow: hi and beyond, on both sides.
+	for _, x := range []float64{100, 1e300, math.MaxFloat64} {
+		h.Add(x)
+	}
+	for _, x := range []float64{-100, -1e200} {
+		h.Add(x)
+	}
+	if h.zero != 4 || h.pos.over != 3 || h.neg.over != 2 || h.Size() != 0 {
+		t.Fatalf("zero, pos.over, neg.over, Size = %d, %d, %d, %d, want 4, 3, 2, 0",
+			h.zero, h.pos.over, h.neg.over, h.Size())
+	}
+	// In range: 1 (lo itself) and 50.
+	h.Add(1)
+	h.Add(50)
+	// Ascending: -1e200 -100 | 0 0.5 -0.999 5e-324 | 1 50 | 100 1e300 MaxFloat64.
+	tests := []struct {
+		k    int
+		want float64
+	}{
+		{1, -1e200}, // negative overflow: the minimum
+		{2, 0}, {5, 0},
+		{6, 1},
+		{8, math.MaxFloat64}, {9, math.MaxFloat64}, // positive overflow: the maximum
+	}
+	n := h.Count()
+	for _, tt := range tests {
+		q := float64(tt.k) / float64(n-1)
+		got := h.Quantile(q)
+		if tt.want == 0 && (got != 0 || math.Signbit(got)) {
+			t.Errorf("Quantile(rank %d) = %v, want +0", tt.k, got)
+		} else if tt.want != 0 && relError(got, tt.want) > maxError(6)*(1+1e-12) {
+			t.Errorf("Quantile(rank %d) = %v, want %v", tt.k, got, tt.want)
+		}
+	}
+	// CDF: values in zero and overflow count as half if x is among them.
+	cdf := []struct{ x, want float64 }{
+		{-1e300, 0},
+		{-500, 1.0 / 11},
+		{0.1, (2 + 2.0) / 11},
+		{1000, (2 + 4 + 2 + 1.5) / 11},
+	}
+	for _, tt := range cdf {
+		if got := h.CDF(tt.x); math.Abs(got-tt.want) > 1e-12 {
+			t.Errorf("CDF(%v) = %v, want %v", tt.x, got, tt.want)
+		}
+	}
+}
+
+// TestDefaultRange checks that extreme values don't grow the default histogram.
+func TestDefaultRange(t *testing.T) {
+	h := New()
+	fill(h, makeValues("lognormal", 1, 10_000))
+	size := h.Size()
+	for _, x := range []float64{1e-300, -1e-300, 1e-10, 1e300, -1e300, 1e18} {
+		h.Add(x)
+	}
+	if h.Size() != size {
+		t.Errorf("Size = %d, want %d", h.Size(), size)
+	}
+	// The whole range [1e-9, 1e18) fits in 90 octaves per sign.
+	h.Add(1e-9)
+	h.Add(9.9e17)
+	h.Add(-1e-9)
+	h.Add(-9.9e17)
+	if want := 2 * 90 * 8 << defaultBits; h.Size() != want {
+		t.Errorf("full range: Size = %d, want %d", h.Size(), want)
 	}
 }
 
@@ -186,7 +289,7 @@ func TestAccuracy(t *testing.T) {
 	for _, relErr := range []float64{0.1, 0.01, 0.001, 0.0001} {
 		for _, dist := range dists {
 			xs := makeValues(dist, 1, n)
-			h := NewError(relErr)
+			h := newFull(relErr)
 			fill(h, xs)
 			slices.Sort(xs)
 			bound := maxError(52-int(h.shift)) * (1 + 1e-12)
@@ -206,7 +309,7 @@ func TestAllRanks(t *testing.T) {
 	const n = 1000
 	for _, dist := range dists {
 		xs := makeValues(dist, 2, n)
-		h := NewError(0.01)
+		h := newFull(0.01)
 		fill(h, xs)
 		slices.Sort(xs)
 		bound := maxError(6) * (1 + 1e-12)
@@ -231,7 +334,10 @@ func naiveQuantile(h *Histogram, q float64) float64 {
 	if k >= h.count-1 {
 		return h.max
 	}
-	var cum uint64
+	cum := h.neg.over
+	if cum > k {
+		return h.min
+	}
 	for j := len(h.neg.counts) - 1; j >= 0; j-- {
 		cum += h.neg.counts[j]
 		if cum > k {
@@ -279,14 +385,19 @@ func TestQuantileScan(t *testing.T) {
 		"zeros":          make([]float64, n),
 		"wide":           makeValues("wide", 3, n),
 	}
+	// Ranges: everything in buckets, and many values in zero and overflow.
+	ranges := [][2]float64{{0, math.Inf(1)}, {0.5, 2}}
 	for name, xs := range sets {
-		for _, relErr := range []float64{0.1, 0.01, 0.001} {
-			h := NewError(relErr)
-			fill(h, xs)
-			for k := range n {
-				q := float64(k) / float64(n-1)
-				if got, want := h.Quantile(q), naiveQuantile(h, q); got != want {
-					t.Errorf("%s relErr=%v: Quantile(%v) = %v, want %v", name, relErr, q, got, want)
+		for _, r := range ranges {
+			for _, relErr := range []float64{0.1, 0.01, 0.001} {
+				h := NewRange(relErr, r[0], r[1])
+				fill(h, xs)
+				for k := range n {
+					q := float64(k) / float64(n-1)
+					if got, want := h.Quantile(q), naiveQuantile(h, q); got != want {
+						t.Errorf("%s range=%v relErr=%v: Quantile(%v) = %v, want %v",
+							name, r, relErr, q, got, want)
+					}
 				}
 			}
 		}
@@ -299,7 +410,7 @@ func TestCDF(t *testing.T) {
 	const n = 100_000
 	for _, dist := range dists {
 		xs := makeValues(dist, 1, n)
-		h := NewError(0.01)
+		h := newFull(0.01)
 		fill(h, xs)
 		sorted := slices.Clone(xs)
 		slices.Sort(sorted)
@@ -322,7 +433,7 @@ func TestCDF(t *testing.T) {
 func TestMonotonic(t *testing.T) {
 	for _, dist := range dists {
 		xs := makeValues(dist, 1, 10_000)
-		h := New()
+		h := newFull(0.005)
 		fill(h, xs)
 		prev := math.Inf(-1)
 		for i := range 1001 {
@@ -347,7 +458,7 @@ func TestMonotonic(t *testing.T) {
 func TestMinMax(t *testing.T) {
 	for _, dist := range dists {
 		xs := makeValues(dist, 1, 10_000)
-		h := New()
+		h := newFull(0.005)
 		fill(h, xs)
 		lo, hi := slices.Min(xs), slices.Max(xs)
 		if h.Quantile(0) != lo || h.Quantile(1) != hi {
@@ -381,7 +492,7 @@ func TestLargeValues(t *testing.T) {
 // TestOrder checks that the order of values doesn't matter.
 func TestOrder(t *testing.T) {
 	xs := makeValues("wide", 1, 10_000)
-	a, b := New(), New()
+	a, b := newFull(0.005), newFull(0.005)
 	fill(a, xs)
 	slices.Sort(xs)
 	fill(b, xs)
@@ -412,13 +523,15 @@ func TestMerge(t *testing.T) {
 	for _, dist := range dists {
 		xs := makeValues(dist, 1, 100_000)
 		slices.Sort(xs) // parts with different ranges
-		all := New()
+		all := newFull(0.005)
 		fill(all, xs)
-		merged := New()
+		merged := newFull(0.005)
 		for p := range 10 {
-			part := New()
+			part := newFull(0.005)
 			fill(part, xs[p*10_000:(p+1)*10_000])
-			merged.Merge(part)
+			if err := merged.Merge(part); err != nil {
+				t.Fatal(err)
+			}
 		}
 		same(t, all, merged)
 	}
@@ -426,14 +539,18 @@ func TestMerge(t *testing.T) {
 
 func TestMergeEmpty(t *testing.T) {
 	h := New()
-	h.Merge(New())
+	if err := h.Merge(New()); err != nil {
+		t.Fatal(err)
+	}
 	if h.Count() != 0 || !math.IsNaN(h.Quantile(0.5)) {
 		t.Errorf("Count, Quantile(0.5) = %d, %v, want 0, NaN", h.Count(), h.Quantile(0.5))
 	}
 	other := New()
 	other.Add(-5)
 	other.Add(7)
-	h.Merge(other)
+	if err := h.Merge(other); err != nil {
+		t.Fatal(err)
+	}
 	if h.Quantile(0) != -5 || h.Quantile(1) != 7 {
 		t.Errorf("Quantile(0), Quantile(1) = %v, %v, want -5, 7", h.Quantile(0), h.Quantile(1))
 	}
@@ -441,21 +558,36 @@ func TestMergeEmpty(t *testing.T) {
 
 func TestMergeSelf(t *testing.T) {
 	xs := makeValues("wide", 1, 10_000)
-	h, double := New(), New()
+	h, double := newFull(0.005), newFull(0.005)
 	fill(h, xs)
 	fill(double, xs)
 	fill(double, xs)
-	h.Merge(h)
+	if err := h.Merge(h); err != nil {
+		t.Fatal(err)
+	}
 	same(t, h, double)
 }
 
-func TestMergePanics(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Error("Merge with a different relative error did not panic")
+// TestMergeMismatch checks that merging histograms with different relative
+// errors or ranges returns ErrMismatch and leaves h unchanged.
+func TestMergeMismatch(t *testing.T) {
+	tests := map[string][2]*Histogram{
+		"different relErr": {NewError(0.01), NewError(0.001)},
+		"different lo":     {NewRange(0.01, 1, 100), NewRange(0.01, 2, 100)},
+		"different hi":     {NewRange(0.01, 1, 10), NewRange(0.01, 1, 100)},
+	}
+	for name, tt := range tests {
+		h, other := tt[0], tt[1]
+		h.Add(5)
+		other.Add(7)
+		other.Add(8)
+		if err := h.Merge(other); err != ErrMismatch {
+			t.Errorf("%s: Merge = %v, want ErrMismatch", name, err)
 		}
-	}()
-	NewError(0.01).Merge(NewError(0.001))
+		if h.Count() != 1 || h.Quantile(1) != 5 {
+			t.Errorf("%s: Count, max = %d, %v, want 1, 5", name, h.Count(), h.Quantile(1))
+		}
+	}
 }
 
 func TestSize(t *testing.T) {

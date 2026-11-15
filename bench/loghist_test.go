@@ -27,7 +27,11 @@ type unsureLH struct{ h *loghist.Histogram }
 
 func (h unsureLH) Add(x float64)              { h.h.Add(x) }
 func (h unsureLH) Quantile(q float64) float64 { return h.h.Quantile(q) }
-func (h unsureLH) Merge(other lhHist)         { h.h.Merge(other.(unsureLH).h) }
+func (h unsureLH) Merge(other lhHist) {
+	if err := h.h.Merge(other.(unsureLH).h); err != nil {
+		panic(err)
+	}
+}
 
 // hdrLH adapts github.com/HdrHistogram/hdrhistogram-go to the lhHist interface.
 // It records integers, so the values are integer nanoseconds.

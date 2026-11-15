@@ -34,3 +34,13 @@ Design: for rank k > (n−1)/2, scan from the top (positives descending → zero
 | 4.4 / 3.6 / 3.6 | 48 / 90 / 337 | 330 / 650 / 3.4k | 0.095 / 0.112 / 0.158% | 0.251% | 14.1 KB |
 
 Quantile 3.7× faster: closer end alone −31..−40% (121 / 213 / 766), blocks another 2.4×. vs HDR 5–19× faster, vs DDSketch ~35×. Blocks of 16 save another 10–17% but no longer line up with octaves at m=3; kept 8.
+
+## 3. Bounded range [lo, hi), default 1e-9 to 1e18
+
+Design: absolute values below lo count as zero (replaces the fixed subnormal cutoff), values at or beyond ±hi go to per-sign overflow counts. One unsigned check in Add, `abs-lo >= hi-lo`, for both bounds. Quantile on overflow returns ±Inf, clamped to the exact min/max. CDF counts zero/overflow as half when x falls in them. `NewRange(relErr, lo, hi)`, lo=0 and hi=+Inf for the old unbounded behavior. Merge requires equal ranges. Memory bounded by the range: 90 octaves per sign at the default (90 KB at m=7), and 1e-300 or 1e300 no longer adds ~1 MB. Considered and dropped: a paged store (sparse octaves), which costs a lookup in Add and leaves memory unbounded.
+
+| Add             | Quantile      | Merge            | Error (mean)           | Max    | Size    |
+| --------------- | ------------- | ---------------- | ---------------------- | ------ | ------- |
+| 3.7 / 3.7 / 3.7 | 50 / 90 / 338 | 329 / 645 / 3.6k | 0.095 / 0.112 / 0.158% | 0.251% | 14.1 KB |
+
+Add +2% (lo/hi read from fields instead of a constant), Quantile and Merge unchanged (Merge at 0.1% is noisy, ±16%). Error and size unchanged: the benchmark values are inside the default range.

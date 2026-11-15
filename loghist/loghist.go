@@ -22,22 +22,28 @@
 // 4 to 8) is split into 2^m buckets of equal width. The default is m=7,
 // 128 buckets per octave.
 //
+// The error guarantee applies to absolute values in the range [lo, hi), which
+// is 1e-9 to 1e18 by default (set with [NewRange]). Values smaller than lo are
+// treated as zero. Values at or above ±hi are treated as overflow: quantiles
+// that land on these return the exact minimum or maximum. NaN and infinite
+// values are ignored.
+//
 // Memory depends on the range of the values, not on their number: 8·2^m bytes
-// per octave between the smallest and the largest absolute value, separately
-// for positive and negative values. The buckets are allocated as the range
-// grows, and never shrink. A single extreme value, such as 1e-300 among values
-// from 1 to 1e6, adds about a thousand octaves (1 MB with m=7).
+// per octave between the smallest and the largest absolute value in [lo, hi),
+// separately for positive and negative values. The buckets are allocated
+// as the range grows, and never shrink. The range limits the memory: with
+// the default range and error, at most 90 octaves or 90 KB per sign.
 //
-// The minimum and maximum are tracked exactly, so Quantile(0) and Quantile(1)
-// return them. Zero, negative zero and subnormal values (below 2.2e-308
-// in absolute value) count as zero. NaN and infinite values are ignored.
+// Quantile(0) and Quantile(1) return the exact minimum and maximum.
 //
-// Histograms with the same relative error can be merged. Merging is exact:
-// the result is the same as adding all values to one histogram. The order
-// of the values doesn't matter either.
+// Histograms with the same relative error and range can be merged. Merging
+// is exact: the result is the same as adding all values to one histogram.
 package loghist
 
-import "math"
+import (
+	"errors"
+	"math"
+)
 
 // Mantissa bits per bucket: default and range.
 const (
@@ -46,11 +52,21 @@ const (
 	maxBits     = 13
 )
 
+// Default range of absolute values with the relative error bound.
+const (
+	defaultLo = 1e-9
+	defaultHi = 1e18
+)
+
 const (
 	signBit = 1 << 63
-	// Values with smaller bits (zero and subnormals) count as zero.
+	// Bits of the smallest normal float64. Subnormals always count as zero.
 	minNormal = 1 << 52
 )
+
+// ErrMismatch is returned by [Histogram.Merge] when the histograms
+// have different relative errors or ranges.
+var ErrMismatch = errors.New("loghist: histograms have different parameters")
 
 // Histogram estimates quantiles of a stream of numbers.
 //
@@ -59,12 +75,14 @@ const (
 type Histogram struct {
 	// Buckets for positive values and for the absolute values of negative ones.
 	pos, neg store
-	// Number of zero and subnormal values.
+	// Number of values closer to zero than lo.
 	zero uint64
 	// Number of values added.
 	count uint64
 	// Exact minimum and maximum of all values, ±Inf if empty.
 	min, max float64
+	// Bits of the absolute values lo and hi: values in [lo, hi) go to the buckets.
+	lo, hi uint64
 	// The bucket index of a value is its bits >> shift, shift = 52 - m.
 	shift uint
 }
@@ -75,33 +93,52 @@ type store struct {
 	// Covers whole octaves: offset and len are multiples of 2^m.
 	counts []uint64
 	offset int
+	// Number of values with absolute values hi or more.
+	over uint64
 }
 
-// New creates a histogram with the default relative error of 0.39% (1/257).
+// New creates a histogram with the default relative error of 0.39% (1/257)
+// for absolute values from 1e-9 to 1e18.
 func New() *Histogram {
-	return newBits(defaultBits)
+	return newHist(defaultBits, defaultLo, defaultHi)
 }
 
-// NewError creates a histogram with a relative error of at most relErr.
-// The actual error bound is 1/(2^(m+1)+1) for the smallest m that
-// satisfies relErr.
+// NewError creates a histogram with a relative error of at most relErr
+// for absolute values from 1e-9 to 1e18. The actual error bound is
+// 1/(2^(m+1)+1) for the smallest m that satisfies relErr.
 //
 // Panics if relErr is not in [0.0001, 0.1].
 func NewError(relErr float64) *Histogram {
+	return NewRange(relErr, defaultLo, defaultHi)
+}
+
+// NewRange creates a histogram with a relative error of at most relErr
+// for absolute values in [lo, hi). Values closer to zero than lo count
+// as zero, and values at or beyond ±hi count as overflow. Use lo = 0
+// and hi = +Inf to cover all float64 values (subnormals still count as zero),
+// at the cost of unbounded memory.
+//
+// Panics if relErr is not in [0.0001, 0.1], or unless 0 <= lo < hi.
+func NewRange(relErr, lo, hi float64) *Histogram {
 	if !(relErr >= 0.0001 && relErr <= 0.1) {
 		panic("loghist: relErr must be in [0.0001, 0.1]")
+	}
+	if !(lo >= 0 && lo < hi) {
+		panic("loghist: range must satisfy 0 <= lo < hi")
 	}
 	m := minBits
 	for maxError(m) > relErr {
 		m++
 	}
-	return newBits(m)
+	return newHist(m, lo, hi)
 }
 
-func newBits(m int) *Histogram {
+func newHist(m int, lo, hi float64) *Histogram {
 	return &Histogram{
 		min:   math.Inf(1),
 		max:   math.Inf(-1),
+		lo:    max(math.Float64bits(lo), minNormal),
+		hi:    math.Float64bits(hi),
 		shift: uint(52 - m),
 	}
 }
@@ -117,13 +154,18 @@ func (h *Histogram) Add(x float64) {
 	h.max = max(h.max, x)
 	bits := math.Float64bits(x)
 	abs := bits &^ signBit
-	if abs < minNormal {
-		h.zero++
-		return
-	}
 	s := &h.pos
 	if bits != abs {
 		s = &h.neg
+	}
+	// One unsigned comparison for abs < lo or abs >= hi.
+	if abs-h.lo >= h.hi-h.lo {
+		if abs < h.lo {
+			h.zero++
+		} else {
+			s.over++
+		}
+		return
 	}
 	i := int(abs >> h.shift)
 	j := i - s.offset
@@ -168,8 +210,9 @@ func (h *Histogram) Quantile(q float64) float64 {
 
 // CDF returns the estimated fraction of values less than x, where values
 // equal to x count as half (mid-rank convention). Values are assumed to be
-// spread evenly within each bucket. CDF is 0 below the minimum and 1 above
-// the maximum.
+// spread evenly within each bucket. Values closer to zero than lo, or at or
+// beyond ±hi, count as half if x is among them. CDF is 0 below the minimum
+// and 1 above the maximum.
 //
 // Returns NaN if the histogram is empty or x is NaN.
 func (h *Histogram) CDF(x float64) float64 {
@@ -182,13 +225,17 @@ func (h *Histogram) CDF(x float64) float64 {
 	if x > h.max {
 		return 1
 	}
-	negTotal := h.neg.sum(len(h.neg.counts))
+	negTotal := h.neg.over + h.neg.sum(len(h.neg.counts))
 	bits := math.Float64bits(x)
 	abs := bits &^ signBit
 	var below float64
 	switch {
-	case abs < minNormal:
+	case abs < h.lo:
 		below = float64(negTotal) + float64(h.zero)/2
+	case abs >= h.hi && bits == abs:
+		below = float64(negTotal+h.zero+h.pos.sum(len(h.pos.counts))) + float64(h.pos.over)/2
+	case abs >= h.hi:
+		below = float64(h.neg.over) / 2
 	case bits == abs:
 		// Positive values within [min, max] are spread over the bucket.
 		below = float64(negTotal+h.zero) + h.below(&h.pos, x, h.min, h.max)
@@ -203,10 +250,11 @@ func (h *Histogram) CDF(x float64) float64 {
 // Merge adds the values of other to h, so that h estimates the quantiles
 // of the values added to either. Other doesn't change.
 //
-// Panics if the histograms have different relative errors.
-func (h *Histogram) Merge(other *Histogram) {
-	if h.shift != other.shift {
-		panic("loghist: merging histograms with different relative errors")
+// Returns [ErrMismatch] if the histograms have different relative errors
+// or ranges, and doesn't change h.
+func (h *Histogram) Merge(other *Histogram) error {
+	if h.shift != other.shift || h.lo != other.lo || h.hi != other.hi {
+		return ErrMismatch
 	}
 	h.merge(&h.pos, &other.pos)
 	h.merge(&h.neg, &other.neg)
@@ -214,10 +262,12 @@ func (h *Histogram) Merge(other *Histogram) {
 	h.count += other.count
 	h.min = min(h.min, other.min)
 	h.max = max(h.max, other.max)
+	return nil
 }
 
 // merge adds the counts of o to s.
 func (h *Histogram) merge(s, o *store) {
+	s.over += o.over
 	if len(o.counts) == 0 {
 		return
 	}
@@ -234,33 +284,39 @@ func (h *Histogram) Size() int {
 }
 
 // fromBottom returns the estimate for the value of rank k, counting from 0
-// in ascending order: negative values from the largest absolute value
-// down, then zeros, then positive values.
+// in ascending order: negative overflow, negative values from the largest
+// absolute value down, zeros, positive values, positive overflow.
+// Overflow returns ±Inf, which Quantile clamps to the minimum or maximum.
 func (h *Histogram) fromBottom(k uint64) float64 {
-	j, k := scanDown(h.neg.counts, k)
-	if j >= 0 {
-		return -h.value(h.neg.offset + j)
-	}
-	if k < h.zero {
-		return 0
-	}
-	j, _ = scanUp(h.pos.counts, k-h.zero)
-	return h.value(h.pos.offset + j)
+	return h.scan(&h.neg, &h.pos, k)
 }
 
-// fromTop returns the estimate for the value of rank k, counting from 0
-// in descending order: positive values from the largest down, then zeros,
-// then negative values.
+// fromTop is like fromBottom in descending order.
 func (h *Histogram) fromTop(k uint64) float64 {
-	j, k := scanDown(h.pos.counts, k)
+	// 0 - x rather than -x, so that zero stays +0.
+	return 0 - h.scan(&h.pos, &h.neg, k)
+}
+
+// scan returns the estimate for the value of rank k, counting from 0
+// through the overflow of a, the buckets of a from the largest down,
+// zeros, the buckets of b from the smallest up, and the overflow of b.
+// Values in a are negated.
+func (h *Histogram) scan(a, b *store, k uint64) float64 {
+	if k < a.over {
+		return math.Inf(-1)
+	}
+	j, k := scanDown(a.counts, k-a.over)
 	if j >= 0 {
-		return h.value(h.pos.offset + j)
+		return -h.value(a.offset + j)
 	}
 	if k < h.zero {
 		return 0
 	}
-	j, _ = scanUp(h.neg.counts, k-h.zero)
-	return -h.value(h.neg.offset + j)
+	j, _ = scanUp(b.counts, k-h.zero)
+	if j < len(b.counts) {
+		return h.value(b.offset + j)
+	}
+	return math.Inf(1)
 }
 
 // scanUp returns the index of the bucket holding the value of rank k,
