@@ -13,7 +13,7 @@ FUZZTIME ?= 2m
 .PHONY: hll-test hll-bench hll-bench-ref hll-bench-full hll-accuracy
 .PHONY: loghist-test loghist-bench loghist-bench-ref loghist-bench-full loghist-accuracy loghist-fuzz
 .PHONY: tdigest-test tdigest-bench tdigest-bench-ref tdigest-bench-full tdigest-accuracy tdigest-fuzz
-.PHONY: topk-test topk-bench topk-bench-ref topk-bench-full topk-accuracy
+.PHONY: topk-test topk-bench topk-bench-ref topk-bench-full topk-accuracy topk-fuzz
 
 # Run the tests: our Filter, then the size comparison against other libraries.
 bloom-test:
@@ -170,3 +170,7 @@ topk-bench-full:
 # Precision, count error and memory of our Sketch vs the other libraries.
 topk-accuracy:
 	@go test -C bench -v -run '^TestTopK(Accuracy|Drift)$$' . | grep 'impl=' | sed 's/^.*_test.go:[0-9]*: //'
+
+# Fuzz against the true counts.
+topk-fuzz:
+	@go test ./topk -run '^$$' -fuzz '^FuzzSketch$$' -fuzztime $(FUZZTIME)

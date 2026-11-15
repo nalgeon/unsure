@@ -171,7 +171,7 @@ func (s *Sketch) AddN(item []byte, n int) {
 
 // add adds n > 0 to the item's count.
 func (s *Sketch) add(item []byte, n uint64) {
-	s.total += n
+	s.total = min(s.total, math.MaxUint64-n) + n
 	h := wyhash.Hash(item, wyhash.Seed0)
 	fp := uint32(h >> 32)
 
@@ -267,7 +267,7 @@ func (s *Sketch) Count(item []byte) int {
 	return toInt(s.heap[s.slots[i].pos].count)
 }
 
-// Total returns the sum of all counts added.
+// Total returns the sum of all counts added, capped at [math.MaxInt].
 func (s *Sketch) Total() int {
 	return toInt(s.total)
 }

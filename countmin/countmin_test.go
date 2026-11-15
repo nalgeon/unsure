@@ -201,6 +201,13 @@ func TestSaturation(t *testing.T) {
 	if want := 2*max32 + 4; s.Total() != want {
 		t.Fatalf("Total = %d, want %d", s.Total(), want)
 	}
+	// Total saturates instead of wrapping around past MaxUint64.
+	for range 3 {
+		s.AddN(k, math.MaxInt)
+	}
+	if s.Total() != math.MaxInt {
+		t.Fatalf("Total = %d, want MaxInt", s.Total())
+	}
 }
 
 // TestConservativeUpdate checks that estimates are never below the true count

@@ -121,7 +121,7 @@ func (s *Sketch) AddN(item []byte, n int) {
 		j := idx[i&(maxDepth-1)]
 		s.counters[j] = max(s.counters[j], v)
 	}
-	s.total += uint64(n)
+	s.total = min(s.total, math.MaxUint64-uint64(n)) + uint64(n)
 }
 
 // Count returns the estimated count of the item. It's never below
@@ -138,7 +138,7 @@ func (s *Sketch) Count(item []byte) int {
 	return int(min(uint64(est), math.MaxInt))
 }
 
-// Total returns the sum of all counts added.
+// Total returns the sum of all counts added, capped at [math.MaxInt].
 func (s *Sketch) Total() int {
 	return int(min(s.total, math.MaxInt))
 }
