@@ -412,10 +412,12 @@ func (h *Histogram) bounds(i int) (a, b float64) {
 
 // value returns the estimate for values in bucket i: 2ab/(a+b),
 // which has the same relative error at both ends of [a, b).
-// Written as a·2/(1+a/b) so it doesn't overflow.
 func (h *Histogram) value(i int) float64 {
 	a, b := h.bounds(i)
-	return a * 2 / (1 + a/b)
+	// The last bucket ends at +Inf, but its values don't exceed MaxFloat64.
+	b = min(b, math.MaxFloat64)
+	// Written as a·(2/(1+a/b)), so it doesn't overflow.
+	return a * (2 / (1 + a/b))
 }
 
 // clamp limits an estimate to the exact range of the values.

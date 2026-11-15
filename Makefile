@@ -5,10 +5,13 @@ LH_REF := testdata/loghist-reference.txt
 TD_REF := testdata/tdigest-reference.txt
 TK_REF := testdata/topk-reference.txt
 
+# Fuzzing time per target, e.g. make loghist-fuzz FUZZTIME=10m.
+FUZZTIME ?= 2m
+
 .PHONY: bloom-test bloom-bench bloom-bench-ref bloom-bench-full bloom-size
 .PHONY: countmin-test countmin-bench countmin-bench-ref countmin-bench-full countmin-accuracy
 .PHONY: hll-test hll-bench hll-bench-ref hll-bench-full hll-accuracy
-.PHONY: loghist-test loghist-bench loghist-bench-ref loghist-bench-full loghist-accuracy
+.PHONY: loghist-test loghist-bench loghist-bench-ref loghist-bench-full loghist-accuracy loghist-fuzz
 .PHONY: tdigest-test tdigest-bench tdigest-bench-ref tdigest-bench-full tdigest-accuracy
 .PHONY: topk-test topk-bench topk-bench-ref topk-bench-full topk-accuracy
 
@@ -108,6 +111,10 @@ loghist-bench-full:
 # Relative value error and memory of our Histogram vs the other libraries and our t-digest.
 loghist-accuracy:
 	@go test -C bench -v -run '^TestLoghist(Accuracy|Size)$$' . | grep -E 'rel err|KB' | sed 's/^.*_test.go:[0-9]*: //'
+
+# Fuzz against the sorted values.
+loghist-fuzz:
+	@go test ./loghist -run '^$$' -fuzz '^FuzzHistogram$$' -fuzztime $(FUZZTIME)
 
 # Run the tests: our Digest, then the accuracy and size comparison against other libraries.
 tdigest-test:
