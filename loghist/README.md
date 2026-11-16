@@ -58,7 +58,7 @@ Memory depends on the error and on the range of the values. For example, for val
 
 Memory grows when you add a value that's outside the current range, and it never shrinks. The range of values limits how much it can grow. By default, the error guarantee applies to absolute values from 1e-9 to 1e18. This range covers latencies measured in seconds or nanoseconds, as well as sizes in bytes.
 
-With the default settings, values smaller than 1e-9 are treated as zero. Values ≥1e18 or ≤1e18 are treated as overflow: if a quantile lands on them, `Quantile` returns the exact maximum (or minimum). This way, the default histogram never uses more than 90 KB for positive values and 90 KB for negative values, no matter what you add.
+With the default settings, values smaller than 1e-9 are treated as zero. Values ≤−1e18 or ≥1e18 are treated as overflow: if a quantile lands on them, `Quantile` returns the exact maximum (or minimum). This way, the default histogram never uses more than 90 KB for positive values and 90 KB for negative values, no matter what you add.
 
 To set a different range, use `loghist.NewRange(e, lo, hi)`. For example, `NewRange(0.01, 1e-6, 3600)` is for response times in seconds, from 1 µs to 1 hour, with a 1% error. `NewRange(e, 0, math.Inf(1))` covers all float64 values, but then memory is unbounded: adding 1e-300 to a set of values from 1 to 1,000,000 uses about 1 MB more memory.
 
@@ -121,12 +121,12 @@ In the middle of the data, the two are pretty similar. But in a long tail, value
 
 | Quantile | Lognormal | Pareto | Uniform |
 | -------- | --------: | -----: | ------: |
-| 0.5      |     0.13% |  0.10% |  0.008% |
-| 0.99     |      1.7% |   5.8% |  0.015% |
-| 0.999    |      8.8% |    68% |  0.009% |
-| 0.9999   |       82% |   871% |  0.004% |
+| 0.5      |     0.12% |  0.09% |  0.009% |
+| 0.99     |      1.7% |   5.6% |  0.015% |
+| 0.999    |      8.7% |    67% |  0.009% |
+| 0.9999   |       83% |   868% |  0.004% |
 
-A log-linear histogram of about the same size (1% error, 8 KB) has an error below 0.62% for all these cases.
+A log-linear histogram of about the same size (1% error, 8 KB) has an error below 0.78% for all these cases.
 
 So a log-linear histogram is better for latencies, sizes, and other positive measurements with long tails. A t-digest is better when you need a fixed size no matter what the values are, or when the values can be arbitrarily close to zero.
 
@@ -154,14 +154,14 @@ Speed on Apple M1, ns/op (lower is better):
 
 `Add` is measured on a histogram that already has 1M values. `Merge` merges histograms of 100K values each, one after another, into a histogram that starts with 1M values.
 
-Mean relative error at the requested 0.4%, over 5 histograms of 1M values each (lower is better). _Max_ is the largest error at any of the quantiles 0.5, 0.9, 0.99, 0.999 and 0.9999 in any of the histograms:
+Mean relative error at the requested 0.1%, over 5 histograms of 1M values each, lower is better:
 
-| Quantile | unsure |        hdr |     dd |
-| -------- | -----: | ---------: | -----: |
-| 0.5      | 0.095% | **0.019%** | 0.280% |
-| 0.99     | 0.112% | **0.034%** | 0.187% |
-| 0.999    | 0.158% | **0.019%** | 0.216% |
-| Max      | 0.251% | **0.068%** | 0.399% |
+| Quantile |     unsure |        hdr |     dd |
+| -------- | ---------: | ---------: | -----: |
+| 0.5      | **0.033%** | **0.033%** | 0.050% |
+| 0.99     |     0.038% | **0.037%** | 0.048% |
+| 0.999    |     0.027% | **0.019%** | 0.039% |
+| 0.9999   |     0.016% | **0.002%** | 0.025% |
 
 Memory after adding 1M values (lower is better):
 
@@ -171,9 +171,7 @@ Memory after adding 1M values (lower is better):
 |  0.4% |  14 KB | 264 KB | **13 KB** |
 |  0.1% |  56 KB | 264 KB | **40 KB** |
 
-At 0.4%, _hdr_ is the most accurate because with 3 significant digits it actually works at about 0.1%, using 19× more memory. At 1% and 0.1%, _unsure_ and _hdr_ have the same maximum error: _hdr_'s buckets are twice as narrow, but it returns the highest value of a bucket instead of its middle. _dd_ is 1.4–3× less accurate than _unsure_, and uses 10–30% less memory thanks to its logarithmic buckets.
-
-Overall, _unsure_ adds values as fast as _hdr_ and 5× faster than _dd_, queries 5–19× faster than _hdr_ and about 35× faster than _dd_, and merges about as fast as _dd_ and 35–175× faster than _hdr_.
+Overall, _unsure_ adds values as fast as _hdr_ and 5× faster than _dd_, queries 5–19× faster than _hdr_ and about 35× faster than _dd_, and merges about as fast as _dd_ and 35–175× faster than _hdr_. It's about as accurate as _hdr_ with 5× less memory, and 1.3–1.6× more accurate than _dd_ with 40% more memory.
 
 To reproduce, run `make loghist-bench-full` and `make loghist-accuracy` from the repository root.
 

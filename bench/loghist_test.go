@@ -150,10 +150,27 @@ func lhRelError(sorted []float64, x, q float64) float64 {
 
 var lhAccuracyQ = []float64{0.5, 0.9, 0.99, 0.999, 0.9999}
 
+// lhBand returns lhBandSize quantiles spread evenly around q, within 10%
+// of its distance to the closer end (0.9989 to 0.9991 for q=0.999).
+// A single quantile always lands at about the same spot in its bucket,
+// so its error depends on luck; a band of quantiles averages over the
+// whole bucket.
+func lhBand(q float64) []float64 {
+	w := 0.1 * min(q, 1-q)
+	qs := make([]float64, lhBandSize)
+	for i := range qs {
+		qs[i] = q - w + 2*w*float64(i)/float64(lhBandSize-1)
+	}
+	return qs
+}
+
+const lhBandSize = 101
+
 var lhRelErrs = []float64{0.01, 0.004, 0.001}
 
 // TestLoghistAccuracy reports the mean relative value error of Quantile for
-// all implementations, over several histograms of 1M values. Our t-digest
+// all implementations, over a band of quantiles around each target (see lhBand)
+// in several histograms of 1M values. Our t-digest
 // (δ=100) is shown for comparison. Checks that ours stays within its bound.
 func TestLoghistAccuracy(t *testing.T) {
 	const n = 1_000_000
@@ -175,9 +192,11 @@ func TestLoghistAccuracy(t *testing.T) {
 					}
 					slices.Sort(xs)
 					for i, q := range lhAccuracyQ {
-						err := lhRelError(xs, h.Quantile(q), q)
-						errs[i] += err / trials
-						worst = max(worst, err)
+						for _, bq := range lhBand(q) {
+							err := lhRelError(xs, h.Quantile(bq), bq)
+							errs[i] += err / trials / lhBandSize
+							worst = max(worst, err)
+						}
 					}
 				}
 				line := fmt.Sprintf("err=%v %s impl=%s rel err:", relErr, dist, im.name)
