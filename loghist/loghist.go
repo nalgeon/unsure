@@ -134,11 +134,15 @@ func NewRange(relErr, lo, hi float64) *Histogram {
 }
 
 func newHist(m int, lo, hi float64) *Histogram {
+	// Subnormals count as zero, so lo is at least minNormal. A range
+	// of subnormals becomes empty: hi = lo sends every value to zero
+	// or overflow (and keeps hi-lo in Add from wrapping around).
+	loBits := max(math.Float64bits(lo), minNormal)
 	return &Histogram{
 		min:   math.Inf(1),
 		max:   math.Inf(-1),
-		lo:    max(math.Float64bits(lo), minNormal),
-		hi:    math.Float64bits(hi),
+		lo:    loBits,
+		hi:    max(math.Float64bits(hi), loBits),
 		shift: uint(52 - m),
 	}
 }

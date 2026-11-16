@@ -261,6 +261,29 @@ func TestRange(t *testing.T) {
 	}
 }
 
+// TestSubnormalRange checks that a range of subnormals is empty:
+// subnormals count as zero, normal values as overflow, and no
+// value takes memory.
+func TestSubnormalRange(t *testing.T) {
+	for _, r := range [][2]float64{{0, 1e-310}, {1e-320, 1e-315}, {0, 0x1p-1022 * (1 - 0x1p-52)}} {
+		h := NewRange(0.01, r[0], r[1])
+		for _, x := range []float64{5e-324, 1e-316, -1e-316, 0x1p-1022} {
+			h.Add(x)
+		}
+		for _, x := range []float64{1, 1e300, -2} {
+			h.Add(x)
+		}
+		if h.zero != 3 || h.pos.over != 3 || h.neg.over != 1 || h.Size() != 0 {
+			t.Errorf("range %v: zero, pos.over, neg.over, Size = %d, %d, %d, %d, want 3, 3, 1, 0",
+				r, h.zero, h.pos.over, h.neg.over, h.Size())
+		}
+		// Ascending: -2 | 3 subnormals | minNormal 1 1e300.
+		if got, want := h.CDF(2), (1+3+1.5)/7; math.Abs(got-want) > 1e-12 {
+			t.Errorf("range %v: CDF(2) = %v, want %v", r, got, want)
+		}
+	}
+}
+
 // TestDefaultRange checks that extreme values don't grow the default histogram.
 func TestDefaultRange(t *testing.T) {
 	h := New()

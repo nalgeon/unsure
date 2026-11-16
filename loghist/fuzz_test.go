@@ -42,6 +42,9 @@ func FuzzHistogram(f *testing.F) {
 	// the last one, which ends at +Inf.
 	f.Add(encodeFloats(1, 0x1.fcp1023, math.MaxFloat64), uint8(2), 0.0, math.Inf(1), uint16(1))
 	f.Add(encodeFloats(1, 0x1.fep1023, 0x1.ffp1023, math.MaxFloat64), uint8(2), 0.0, math.Inf(1), uint16(2))
+	// Ranges of subnormals, which become empty.
+	f.Add(encodeFloats(1, 1e300, -2, 1e-316, 5e-324, 0x1p-1022), uint8(2), 0.0, 1e-310, uint16(1))
+	f.Add(encodeFloats(1e-316, 1e-318, 0x1p-1022, 0x1.0000000000001p-1022), uint8(4), 1e-320, 0x1p-1022*(1-0x1p-52), uint16(2))
 
 	f.Fuzz(func(t *testing.T, data []byte, mode uint8, lo, hi float64, split uint16) {
 		if !(lo >= 0 && lo < hi) {
