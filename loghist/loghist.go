@@ -156,19 +156,21 @@ func (h *Histogram) Add(x float64) {
 	h.count++
 	h.min = min(h.min, x)
 	h.max = max(h.max, x)
+	// Negative values go to their own store, by absolute value. The bits
+	// of a non-negative float64 sort like the value, so the rest of Add
+	// works on the bits of the absolute value.
 	bits := math.Float64bits(x)
 	abs := bits &^ signBit
 	s := &h.pos
 	if bits != abs {
 		s = &h.neg
 	}
-	// One unsigned comparison for abs < lo or abs >= hi.
-	if abs-h.lo >= h.hi-h.lo {
-		if abs < h.lo {
-			h.zero++
-		} else {
-			s.over++
-		}
+	if abs < h.lo {
+		h.zero++
+		return
+	}
+	if abs >= h.hi {
+		s.over++
 		return
 	}
 	// If the bucket isn't allocated yet, grow the store to its octave.
