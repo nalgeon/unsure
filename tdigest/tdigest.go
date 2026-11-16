@@ -136,9 +136,16 @@ func (d *Digest) Add(x float64) {
 	}
 }
 
-// Count returns the number of values added to the digest.
+// Count returns the number of values added to the digest,
+// capped at [math.MaxInt].
 func (d *Digest) Count() int {
-	return int(d.total) + len(d.buf)
+	// float64(math.MaxInt) rounds up to 2^63 on 64-bit platforms,
+	// which int can't hold, so compare instead of taking the min.
+	n := d.total + float64(len(d.buf))
+	if n >= float64(math.MaxInt) {
+		return math.MaxInt
+	}
+	return int(n)
 }
 
 // Quantile returns the estimated value below which a fraction q of the

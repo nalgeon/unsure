@@ -45,11 +45,11 @@ import (
 	"math"
 )
 
-// Mantissa bits per bucket: default and range.
+// Mantissa bits per bucket: default and minimum. The relErr limit
+// of 0.0001 gives at most 13 bits (64 KB per octave and sign).
 const (
 	defaultBits = 7
 	minBits     = 3
-	maxBits     = 13
 )
 
 // Default range of absolute values with the relative error bound.
@@ -171,6 +171,7 @@ func (h *Histogram) Add(x float64) {
 		}
 		return
 	}
+	// If the bucket isn't allocated yet, grow the store to its octave.
 	i := int(abs >> h.shift)
 	j := i - s.offset
 	if uint(j) >= uint(len(s.counts)) {
@@ -180,9 +181,10 @@ func (h *Histogram) Add(x float64) {
 	s.counts[j]++
 }
 
-// Count returns the number of values added to the histogram.
+// Count returns the number of values added to the histogram,
+// capped at [math.MaxInt].
 func (h *Histogram) Count() int {
-	return int(h.count)
+	return int(min(h.count, math.MaxInt))
 }
 
 // Quantile returns the estimated value of rank ⌊q·(n−1)⌋ (counting from 0)
