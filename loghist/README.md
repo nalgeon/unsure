@@ -62,7 +62,7 @@ With the default settings, values smaller than 1e-9 are treated as zero. Values 
 
 To set a different range, use `loghist.NewRange(e, lo, hi)`. For example, `NewRange(0.01, 1e-6, 3600)` is for response times in seconds, from 1 µs to 1 hour, with a 1% error. `NewRange(e, 0, math.Inf(1))` covers all float64 values, but then memory is unbounded: adding 1e-300 to a set of values from 1 to 1,000,000 uses about 1 MB more memory.
 
-`Quantile(q)` returns the estimated value X such that q proportion of the data values are less than or equal to X. `Quantile(0)` and `Quantile(1)` return the exact minimum and maximum.
+`Quantile(q)` returns the estimated value below which about q of the data falls. `Quantile(0)` and `Quantile(1)` return the exact minimum and maximum.
 
 NaN and infinite values are ignored. The order in which values are added doesn't matter: the same values always produce the same histogram.
 

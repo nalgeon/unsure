@@ -185,10 +185,10 @@ func (h *Histogram) Count() int {
 	return int(h.count)
 }
 
-// Quantile returns the estimated value X such that q proportion of
-// the data values are less than or equal to X. The estimate is within
-// the relative error of the true value. Quantile(0) and Quantile(1) are
-// the exact minimum and maximum.
+// Quantile returns the estimated value of rank ⌊q·(n−1)⌋ (counting from 0)
+// among the n values added. The estimate is within the relative error
+// of the true value. Quantile(0) and Quantile(1) are the exact minimum
+// and maximum.
 //
 // Returns NaN if the histogram is empty or q is not in [0, 1].
 func (h *Histogram) Quantile(q float64) float64 {
