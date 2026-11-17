@@ -11,7 +11,7 @@ func Example() {
 	items := [][]byte{[]byte("alice"), []byte("bob")}
 
 	// An 8-bit filter: 0.39% false positive rate.
-	filter := fuse.New[uint8](slices.Values(items))
+	filter := fuse.New[uint8](slices.Values(items), len(items))
 
 	fmt.Println(filter.Contains([]byte("alice")))
 	fmt.Println(filter.Contains([]byte("bob")))
@@ -33,7 +33,7 @@ func ExampleFilter_Size() {
 			}
 		}
 	}
-	filter := fuse.New[uint8](items)
+	filter := fuse.New[uint8](items, 1_000_000)
 	fmt.Printf("%.1f bits per item\n", float64(filter.Size()*8)/1_000_000)
 	// Output:
 	// 9.0 bits per item

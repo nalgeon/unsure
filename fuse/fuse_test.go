@@ -50,13 +50,13 @@ func TestNoFalseNegatives(t *testing.T) {
 	for _, n := range sizes {
 		keys := makeKeys(1, n)
 		t.Run(fmt.Sprintf("n=%d/T=uint8", n), func(t *testing.T) {
-			checkNoFalseNegatives(t, New[uint8](slices.Values(keys)), keys)
+			checkNoFalseNegatives(t, New[uint8](slices.Values(keys), len(keys)), keys)
 		})
 		t.Run(fmt.Sprintf("n=%d/T=uint16", n), func(t *testing.T) {
-			checkNoFalseNegatives(t, New[uint16](slices.Values(keys)), keys)
+			checkNoFalseNegatives(t, New[uint16](slices.Values(keys), len(keys)), keys)
 		})
 		t.Run(fmt.Sprintf("n=%d/T=uint32", n), func(t *testing.T) {
-			checkNoFalseNegatives(t, New[uint32](slices.Values(keys)), keys)
+			checkNoFalseNegatives(t, New[uint32](slices.Values(keys), len(keys)), keys)
 		})
 	}
 }
@@ -70,7 +70,7 @@ func TestEdgeKeys(t *testing.T) {
 		[]byte("hello, world"),
 		make([]byte, 1<<16),
 	}
-	checkNoFalseNegatives(t, New[uint8](slices.Values(keys)), keys)
+	checkNoFalseNegatives(t, New[uint8](slices.Values(keys), len(keys)), keys)
 }
 
 // TestReusedBuffer checks that New doesn't retain the items,
@@ -86,7 +86,7 @@ func TestReusedBuffer(t *testing.T) {
 				return
 			}
 		}
-	})
+	}, n)
 	checkNoFalseNegatives(t, f, makeKeys(1, n))
 }
 
@@ -103,7 +103,7 @@ func TestDuplicates(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			f := New[uint8](slices.Values(c.keys))
+			f := New[uint8](slices.Values(c.keys), len(c.keys))
 			checkNoFalseNegatives(t, f, c.keys)
 			// Duplicates always fail the first attempt, so the filter
 			// is sized for the distinct keys.
@@ -115,7 +115,7 @@ func TestDuplicates(t *testing.T) {
 					distinct = append(distinct, k)
 				}
 			}
-			if want := New[uint8](slices.Values(distinct)).Size(); f.Size() != want {
+			if want := New[uint8](slices.Values(distinct), len(distinct)).Size(); f.Size() != want {
 				t.Errorf("size %d, want %d (distinct keys only)", f.Size(), want)
 			}
 		})
@@ -124,10 +124,22 @@ func TestDuplicates(t *testing.T) {
 
 func TestDeterministic(t *testing.T) {
 	keys := makeKeys(1, 10_000)
-	a := New[uint16](slices.Values(keys))
-	b := New[uint16](slices.Values(keys))
+	a := New[uint16](slices.Values(keys), len(keys))
+	b := New[uint16](slices.Values(keys), len(keys))
 	if a.layout != b.layout || !slices.Equal(a.fps, b.fps) {
 		t.Fatal("same keys built different filters")
+	}
+}
+
+// TestSizeHint checks that n only affects preallocation, not the filter.
+func TestSizeHint(t *testing.T) {
+	keys := makeKeys(1, 10_000)
+	want := New[uint8](slices.Values(keys), len(keys))
+	for _, n := range []int{-1, 0, 1, len(keys) / 2, len(keys) * 10} {
+		got := New[uint8](slices.Values(keys), n)
+		if got.layout != want.layout || !slices.Equal(got.fps, want.fps) {
+			t.Errorf("n=%d: built a different filter", n)
+		}
 	}
 }
 
@@ -160,7 +172,7 @@ func TestAttempts(t *testing.T) {
 }
 
 func testFalsePositiveRate[T uint8 | uint16 | uint32](t *testing.T, n, probes int) {
-	f := New[T](slices.Values(makeKeys(1, n)))
+	f := New[T](slices.Values(makeKeys(1, n)), n)
 	fp := 0
 	for _, k := range makeKeys(2, probes) {
 		if f.Contains(k) {
@@ -188,7 +200,7 @@ func TestFalsePositiveRate(t *testing.T) {
 // 1.125·bits per item for large n, more for small n.
 func TestSize(t *testing.T) {
 	for _, n := range []int{1000, 10_000, 100_000, 1_000_000, 10_000_000} {
-		f := New[uint8](slices.Values(makeKeys(1, n)))
+		f := New[uint8](slices.Values(makeKeys(1, n)), n)
 		bpi := float64(f.Size()*8) / float64(n)
 		factor := max(1.125, 0.875+0.25*math.Log(1e6)/math.Log(float64(n)))
 		t.Logf("n=%d: %.2f bits/item (size factor %.3f)", n, bpi, factor)
@@ -231,9 +243,9 @@ func FuzzFilter(f *testing.F) {
 				keys = append(keys, []byte{b, byte(r % 7)})
 			}
 		}
-		fl := New[uint8](slices.Values(keys))
+		fl := New[uint8](slices.Values(keys), len(keys))
 		checkNoFalseNegatives(t, fl, keys)
-		again := New[uint8](slices.Values(keys))
+		again := New[uint8](slices.Values(keys), len(keys))
 		if fl.layout != again.layout || !slices.Equal(fl.fps, again.fps) {
 			t.Fatal("same keys built different filters")
 		}

@@ -21,4 +21,14 @@ Same layout and sizing as the reference (so identical size). Takes `iter.Seq[[]b
 | ------- | -------------- | -------------- | ------------------- |
 | 30 / 36 | 7.6 / 8.4 / 39 | 7.6 / 8.4 / 39 | 11.26 / 9.50 / 9.02 |
 
-From `make fuse-bench-full`. Contains 6–13% faster than the reference. New 11–19% slower: at 1M, ~3 ns/item is growing the hash slice (n is unknown with an iterator; a capacity hint gives 33.6 vs 32.4). Build attempts over 1112 sizes from 1 to 2M: mean 1.03, worst 4, so the reference's segment-length fallback for small n isn't needed.
+From `make fuse-bench-full`. Contains 6–13% faster than the reference. New 11–19% slower: about half is growing the hash slice (n is unknown with an iterator), half the build itself. Build attempts over 1112 sizes from 1 to 2M: mean 1.03, worst 4, so the reference's segment-length fallback for small n isn't needed.
+
+## 2. Size hint
+
+`New(items, n)`: n is the expected number of items, used only to preallocate the hash slice (0 if unknown; the filter is still sized by the items actually read). Removes the slice regrowth and its GC churn: 30 → 28 / 36 → 34 ns/item. Chunked hash storage (no copying, no API change) gave only 30 → 29 / 36 → 34.
+
+| New     | ContainsHit    | ContainsMiss   | Size                |
+| ------- | -------------- | -------------- | ------------------- |
+| 28 / 34 | 7.6 / 8.4 / 39 | 7.6 / 8.4 / 39 | 11.26 / 9.50 / 9.02 |
+
+New is now 5–12% slower than the reference, all in the build itself.

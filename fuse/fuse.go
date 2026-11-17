@@ -58,12 +58,16 @@ type layout struct {
 
 // New builds a filter from the items. Duplicates are allowed.
 //
+// n is the expected number of items, or 0 if unknown. It's only used to
+// preallocate memory: the filter is sized for the items actually read.
+// A good estimate makes New faster.
+//
 // Items are hashed as they're read and not retained, so the iterator may
 // reuse the same buffer for every item.
 //
 // Panics if there are too many items (more than about 3.8 billion).
-func New[T uint8 | uint16 | uint32](items iter.Seq[[]byte]) *Filter[T] {
-	var hashes []uint64
+func New[T uint8 | uint16 | uint32](items iter.Seq[[]byte], n int) *Filter[T] {
+	hashes := make([]uint64, 0, max(n, 0))
 	for item := range items {
 		hashes = append(hashes, wyhash.Hash(item, wyhash.Seed0))
 	}

@@ -61,8 +61,8 @@ func newFuseBloom(items iter.Seq[[]byte], n, bits int) fuseFilter {
 }
 
 var fuseImpls = []fuseImpl{
-	{"unsure", 8, func(items iter.Seq[[]byte], n int) fuseFilter { return fuse.New[uint8](items) }},
-	{"unsure", 16, func(items iter.Seq[[]byte], n int) fuseFilter { return fuse.New[uint16](items) }},
+	{"unsure", 8, func(items iter.Seq[[]byte], n int) fuseFilter { return fuse.New[uint8](items, n) }},
+	{"unsure", 16, func(items iter.Seq[[]byte], n int) fuseFilter { return fuse.New[uint16](items, n) }},
 	{"xorfilter", 8, func(items iter.Seq[[]byte], n int) fuseFilter {
 		return xorFuse[uint8]{must(xorfilter.NewBinaryFuse[uint8](wyhashKeys(items, n)))}
 	}},

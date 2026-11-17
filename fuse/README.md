@@ -20,7 +20,7 @@ import "github.com/nalgeon/unsure/fuse"
 items := [][]byte{[]byte("alice"), []byte("bob")}
 
 // An 8-bit filter: 0.39% false positive rate.
-filter := fuse.New[uint8](slices.Values(items))
+filter := fuse.New[uint8](slices.Values(items), len(items))
 
 filter.Contains([]byte("alice")) // true
 filter.Contains([]byte("carol")) // false (or, rarely, true)
@@ -34,7 +34,7 @@ The fingerprint type determines the false positive rate and the memory use:
 | `uint16` |             0.0015% |            18 |
 | `uint32` |             2.3e-10 |            36 |
 
-`New` takes an iterator of items to add to the filter. Duplicate items are allowed.
+`New` takes an iterator of items to add to the filter and the expected number of items (0 if unknown). The number is only used to preallocate memory, so a good estimate makes the build faster.
 
 The filter is deterministic, so the same items always produce the same filter. The filter is not designed for adversarial input: anyone who knows the hash function can artificially increase false positives.
 
@@ -67,8 +67,8 @@ Compared to [FastFilter/xorfilter](https://github.com/FastFilter/xorfilter) (bin
 
 | Operation        | Items |  unsure | xorfilter |  bloom |
 | ---------------- | ----: | ------: | --------: | -----: |
-| Build (per item) |   10K |      30 |        25 | **13** |
-|                  |    1M |      36 |        32 | **12** |
+| Build (per item) |   10K |      28 |        25 | **13** |
+|                  |    1M |      34 |        32 | **12** |
 | Contains, hit    |   10K | **7.6** |       8.1 |    9.2 |
 |                  |    1M | **8.4** |       9.2 |   10.2 |
 |                  |   50M |  **39** |        44 |     40 |
@@ -80,8 +80,8 @@ Compared to [FastFilter/xorfilter](https://github.com/FastFilter/xorfilter) (bin
 
 | Operation        | Items |  unsure | xorfilter |  bloom |
 | ---------------- | ----: | ------: | --------: | -----: |
-| Build (per item) |   10K |      30 |        25 | **19** |
-|                  |    1M |      36 |        32 | **19** |
+| Build (per item) |   10K |      28 |        25 | **19** |
+|                  |    1M |      34 |        32 | **19** |
 | Contains, hit    |   10K | **7.6** |       8.1 |   13.2 |
 |                  |    1M | **8.6** |       9.3 |   16.3 |
 |                  |   50M |  **44** |        47 |     59 |
@@ -98,7 +98,7 @@ Memory, bits per item (lower is better):
 |   10M | 8-bit       |  **9.02** |  **9.02** | 12.10 |
 |   10M | 16-bit      | **18.04** | **18.04** | 27.99 |
 
-Overall, _unsure_ is the same size as _xorfilter_ (same layout), with 6–13% faster checks and 11–19% slower builds. Compared to the Bloom filter, it uses 24–36% less memory (8% for 1K items), with checks as fast or faster, but 1.6–3× slower builds.
+Overall, _unsure_ is the same size as _xorfilter_ (same layout), with 6–13% faster checks and 5–12% slower builds. Compared to the Bloom filter, it uses 24–36% less memory (8% for 1K items), with checks as fast or faster, but 1.5–3× slower builds.
 
 To reproduce, run `make fuse-bench-full` and `make fuse-size` from the repository root.
 
