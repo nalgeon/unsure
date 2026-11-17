@@ -4,6 +4,7 @@ go 1.25
 
 require (
 	github.com/DataDog/sketches-go v1.4.8
+	github.com/FastFilter/xorfilter v0.5.1
 	github.com/HdrHistogram/hdrhistogram-go v1.4.0
 	github.com/axiomhq/hyperloglog v0.3.0
 	github.com/bits-and-blooms/bloom/v3 v3.7.1

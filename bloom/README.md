@@ -1,10 +1,6 @@
 # Bloom filter
 
-A simple and fast Bloom filter implemented in Go.
-
-## What is a Bloom filter
-
-A Bloom filter is a set that trades certainty for space. It can tell you that an item is _definitely not_ in the set, or that it _probably is_ (which might be a false positive). The filter doesn't actually store the items, so it's much more compact than a regular set.
+A Bloom filter is a set that trades certainty for space. It can tell you that an item is _definitely not_ in the set, or that it _probably is_ (which might be a false positive). The filter doesn't store the items, so it's much more compact than a regular set.
 
 For example, a regular set with 1,000,000 distinct 8-byte strings takes about 64 MB. A Bloom filter for the same strings, with a 1% false positive rate, uses only 1.24 MB (about 10 bits per item) — that's 50 times smaller. The size of the filter doesn't depend on the item size, so the difference gets even bigger with longer strings.
 
@@ -33,8 +29,7 @@ filter.Contains([]byte("carol")) // false (or, rarely, true)
 
 The filter is sized for the given number of items with a given false positive rate. You can add more, but the false positive rate will go up.
 
-The filter is deterministic, so the same items always produce the same filter. The filter is not designed for adversarial input: anyone who knows the seed (or crafts keys that cancel it out)
-can artificially increase false positives.
+The filter is deterministic, so the same items always produce the same filter. The filter is not designed for adversarial input: anyone who knows the seed (or crafts keys that cancel it out) can artificially increase false positives.
 
 ## How it works
 

@@ -1,0 +1,204 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/nalgeon/unsure/bench
+cpu: Apple M1
+BenchmarkFuseContainsHit/n=10000/bits=8/impl=xorfilter-8         	144084550	         8.191 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=8/impl=xorfilter-8         	149576362	         8.022 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=8/impl=xorfilter-8         	149407923	         8.034 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=8/impl=xorfilter-8         	149235717	         8.041 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=8/impl=xorfilter-8         	149259462	         8.040 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=8/impl=xorfilter-8         	149024648	         8.048 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=16/impl=xorfilter-8        	149260956	         8.045 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=16/impl=xorfilter-8        	148593201	         8.071 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=16/impl=xorfilter-8        	148197820	         8.090 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=16/impl=xorfilter-8        	149322526	         8.039 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=16/impl=xorfilter-8        	147055916	         8.162 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=16/impl=xorfilter-8        	147286348	         8.117 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=8/impl=bloom-8             	128803908	         9.317 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=8/impl=bloom-8             	128900850	         9.348 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=8/impl=bloom-8             	122346924	         9.836 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=8/impl=bloom-8             	125692003	         9.500 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=8/impl=bloom-8             	129046497	         9.303 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=8/impl=bloom-8             	128786127	         9.325 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=16/impl=bloom-8            	89629432	        13.32 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=16/impl=bloom-8            	90063320	        13.29 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=16/impl=bloom-8            	90205501	        13.28 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=16/impl=bloom-8            	89984816	        13.27 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=16/impl=bloom-8            	90377036	        13.31 ns/op
+BenchmarkFuseContainsHit/n=10000/bits=16/impl=bloom-8            	89533302	        13.29 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=8/impl=xorfilter-8       	129617289	         9.252 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=8/impl=xorfilter-8       	129482353	         9.266 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=8/impl=xorfilter-8       	129228735	         9.282 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=8/impl=xorfilter-8       	129571028	         9.255 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=8/impl=xorfilter-8       	129848979	         9.232 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=8/impl=xorfilter-8       	130328948	         9.220 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=16/impl=xorfilter-8      	127586872	         9.394 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=16/impl=xorfilter-8      	127939628	         9.387 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=16/impl=xorfilter-8      	127724642	         9.375 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=16/impl=xorfilter-8      	129513150	         9.259 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=16/impl=xorfilter-8      	129749238	         9.259 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=16/impl=xorfilter-8      	129599638	         9.270 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=8/impl=bloom-8           	100000000	        10.70 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=8/impl=bloom-8           	110107435	        10.65 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=8/impl=bloom-8           	100000000	        10.20 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=8/impl=bloom-8           	100000000	        10.22 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=8/impl=bloom-8           	100000000	        10.17 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=8/impl=bloom-8           	100000000	        10.20 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=16/impl=bloom-8          	74004217	        16.25 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=16/impl=bloom-8          	74653560	        16.30 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=16/impl=bloom-8          	74599414	        16.33 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=16/impl=bloom-8          	72856794	        16.26 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=16/impl=bloom-8          	74748502	        16.25 ns/op
+BenchmarkFuseContainsHit/n=1000000/bits=16/impl=bloom-8          	73150288	        16.26 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=8/impl=xorfilter-8      	27419456	        41.78 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=8/impl=xorfilter-8      	29049124	        41.94 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=8/impl=xorfilter-8      	28893672	        41.82 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=8/impl=xorfilter-8      	28885501	        43.39 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=8/impl=xorfilter-8      	29034541	        41.63 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=8/impl=xorfilter-8      	28801036	        44.16 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=16/impl=xorfilter-8     	26693062	        45.76 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=16/impl=xorfilter-8     	25543123	        45.48 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=16/impl=xorfilter-8     	25788310	        45.63 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=16/impl=xorfilter-8     	25710842	        45.50 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=16/impl=xorfilter-8     	25997518	        45.83 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=16/impl=xorfilter-8     	25031310	        45.81 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=8/impl=bloom-8          	30180832	        39.52 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=8/impl=bloom-8          	30203875	        39.79 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=8/impl=bloom-8          	28350334	        40.68 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=8/impl=bloom-8          	29883794	        39.55 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=8/impl=bloom-8          	30247905	        39.85 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=8/impl=bloom-8          	29984226	        39.61 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=16/impl=bloom-8         	20500729	        59.27 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=16/impl=bloom-8         	20561954	        57.95 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=16/impl=bloom-8         	20549396	        57.99 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=16/impl=bloom-8         	20727223	        57.82 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=16/impl=bloom-8         	20683057	        57.70 ns/op
+BenchmarkFuseContainsHit/n=50000000/bits=16/impl=bloom-8         	20770707	        57.39 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=8/impl=xorfilter-8        	149529526	         8.023 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=8/impl=xorfilter-8        	149188004	         8.041 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=8/impl=xorfilter-8        	149019474	         8.047 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=8/impl=xorfilter-8        	147860982	         8.093 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=8/impl=xorfilter-8        	149402839	         8.040 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=8/impl=xorfilter-8        	149102364	         8.044 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=16/impl=xorfilter-8       	149038106	         8.046 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=16/impl=xorfilter-8       	149363191	         8.033 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=16/impl=xorfilter-8       	149213728	         8.042 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=16/impl=xorfilter-8       	149288716	         8.041 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=16/impl=xorfilter-8       	149221057	         8.041 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=16/impl=xorfilter-8       	149187974	         8.041 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=8/impl=bloom-8            	130413720	         9.199 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=8/impl=bloom-8            	130477222	         9.195 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=8/impl=bloom-8            	130187025	         9.214 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=8/impl=bloom-8            	130423370	         9.198 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=8/impl=bloom-8            	130479013	         9.196 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=8/impl=bloom-8            	130597272	         9.182 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=16/impl=bloom-8           	91407099	        13.45 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=16/impl=bloom-8           	91290331	        13.25 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=16/impl=bloom-8           	91310886	        13.16 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=16/impl=bloom-8           	90982606	        13.13 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=16/impl=bloom-8           	91226710	        13.26 ns/op
+BenchmarkFuseContainsMiss/n=10000/bits=16/impl=bloom-8           	90985773	        13.15 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=8/impl=xorfilter-8      	131231311	         9.148 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=8/impl=xorfilter-8      	131540965	         9.127 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=8/impl=xorfilter-8      	131404964	         9.127 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=8/impl=xorfilter-8      	131260725	         9.135 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=8/impl=xorfilter-8      	131453552	         9.122 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=8/impl=xorfilter-8      	131382126	         9.131 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=16/impl=xorfilter-8     	129009721	         9.291 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=16/impl=xorfilter-8     	129105376	         9.281 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=16/impl=xorfilter-8     	129695517	         9.258 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=16/impl=xorfilter-8     	129406196	         9.283 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=16/impl=xorfilter-8     	129411202	         9.278 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=16/impl=xorfilter-8     	126310670	         9.467 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=8/impl=bloom-8          	100000000	        10.17 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=8/impl=bloom-8          	100000000	        10.19 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=8/impl=bloom-8          	100000000	        10.16 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=8/impl=bloom-8          	100000000	        10.14 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=8/impl=bloom-8          	100000000	        10.15 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=8/impl=bloom-8          	100000000	        10.14 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=16/impl=bloom-8         	74807137	        16.17 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=16/impl=bloom-8         	75336267	        16.12 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=16/impl=bloom-8         	74967590	        16.14 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=16/impl=bloom-8         	74125549	        16.18 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=16/impl=bloom-8         	74849906	        16.14 ns/op
+BenchmarkFuseContainsMiss/n=1000000/bits=16/impl=bloom-8         	74986525	        16.25 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=8/impl=xorfilter-8     	26343976	        42.11 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=8/impl=xorfilter-8     	29101080	        42.37 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=8/impl=xorfilter-8     	28379528	        42.39 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=8/impl=xorfilter-8     	29018304	        41.62 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=8/impl=xorfilter-8     	28686715	        41.84 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=8/impl=xorfilter-8     	29176906	        43.11 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=16/impl=xorfilter-8    	26672074	        45.59 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=16/impl=xorfilter-8    	23358270	        48.57 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=16/impl=xorfilter-8    	26276556	        45.39 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=16/impl=xorfilter-8    	25434798	        46.19 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=16/impl=xorfilter-8    	26216233	        46.52 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=16/impl=xorfilter-8    	25380262	        50.59 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=8/impl=bloom-8         	28716549	        40.61 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=8/impl=bloom-8         	29669402	        40.57 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=8/impl=bloom-8         	29611015	        40.64 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=8/impl=bloom-8         	29387424	        40.49 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=8/impl=bloom-8         	29345203	        40.73 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=8/impl=bloom-8         	29521111	        40.43 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=16/impl=bloom-8        	20196013	        59.23 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=16/impl=bloom-8        	20209632	        59.16 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=16/impl=bloom-8        	20253177	        58.95 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=16/impl=bloom-8        	20268757	        59.26 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=16/impl=bloom-8        	20247496	        58.80 ns/op
+BenchmarkFuseContainsMiss/n=50000000/bits=16/impl=bloom-8        	20263209	        62.52 ns/op
+PASS
+ok  	github.com/nalgeon/unsure/bench	285.872s
+goos: darwin
+goarch: arm64
+pkg: github.com/nalgeon/unsure/bench
+cpu: Apple M1
+BenchmarkFuseNew/n=10000/bits=8/impl=xorfilter-8         	    4538	    257124 ns/op	        25.71 ns/item
+BenchmarkFuseNew/n=10000/bits=8/impl=xorfilter-8         	    4734	    249958 ns/op	        25.00 ns/item
+BenchmarkFuseNew/n=10000/bits=8/impl=xorfilter-8         	    4828	    251239 ns/op	        25.12 ns/item
+BenchmarkFuseNew/n=10000/bits=8/impl=xorfilter-8         	    4743	    248697 ns/op	        24.87 ns/item
+BenchmarkFuseNew/n=10000/bits=8/impl=xorfilter-8         	    4854	    248346 ns/op	        24.83 ns/item
+BenchmarkFuseNew/n=10000/bits=8/impl=xorfilter-8         	    4917	    247464 ns/op	        24.75 ns/item
+BenchmarkFuseNew/n=10000/bits=16/impl=xorfilter-8        	    4543	    249657 ns/op	        24.97 ns/item
+BenchmarkFuseNew/n=10000/bits=16/impl=xorfilter-8        	    4794	    250264 ns/op	        25.03 ns/item
+BenchmarkFuseNew/n=10000/bits=16/impl=xorfilter-8        	    4780	    248446 ns/op	        24.84 ns/item
+BenchmarkFuseNew/n=10000/bits=16/impl=xorfilter-8        	    4898	    248372 ns/op	        24.84 ns/item
+BenchmarkFuseNew/n=10000/bits=16/impl=xorfilter-8        	    4884	    248516 ns/op	        24.85 ns/item
+BenchmarkFuseNew/n=10000/bits=16/impl=xorfilter-8        	    4849	    248706 ns/op	        24.87 ns/item
+BenchmarkFuseNew/n=10000/bits=8/impl=bloom-8             	    9000	    133598 ns/op	        13.36 ns/item
+BenchmarkFuseNew/n=10000/bits=8/impl=bloom-8             	    8900	    133571 ns/op	        13.36 ns/item
+BenchmarkFuseNew/n=10000/bits=8/impl=bloom-8             	    8986	    133619 ns/op	        13.36 ns/item
+BenchmarkFuseNew/n=10000/bits=8/impl=bloom-8             	    9020	    133548 ns/op	        13.35 ns/item
+BenchmarkFuseNew/n=10000/bits=8/impl=bloom-8             	    9028	    133683 ns/op	        13.37 ns/item
+BenchmarkFuseNew/n=10000/bits=8/impl=bloom-8             	    9034	    133819 ns/op	        13.38 ns/item
+BenchmarkFuseNew/n=10000/bits=16/impl=bloom-8            	    6180	    191859 ns/op	        19.19 ns/item
+BenchmarkFuseNew/n=10000/bits=16/impl=bloom-8            	    6256	    192245 ns/op	        19.22 ns/item
+BenchmarkFuseNew/n=10000/bits=16/impl=bloom-8            	    6148	    215193 ns/op	        21.52 ns/item
+BenchmarkFuseNew/n=10000/bits=16/impl=bloom-8            	    6246	    191951 ns/op	        19.20 ns/item
+BenchmarkFuseNew/n=10000/bits=16/impl=bloom-8            	    6240	    192334 ns/op	        19.23 ns/item
+BenchmarkFuseNew/n=10000/bits=16/impl=bloom-8            	    6282	    192134 ns/op	        19.21 ns/item
+BenchmarkFuseNew/n=1000000/bits=8/impl=xorfilter-8       	      36	  31592337 ns/op	        31.59 ns/item
+BenchmarkFuseNew/n=1000000/bits=8/impl=xorfilter-8       	      37	  31485098 ns/op	        31.49 ns/item
+BenchmarkFuseNew/n=1000000/bits=8/impl=xorfilter-8       	      37	  31483529 ns/op	        31.48 ns/item
+BenchmarkFuseNew/n=1000000/bits=8/impl=xorfilter-8       	      37	  31408135 ns/op	        31.41 ns/item
+BenchmarkFuseNew/n=1000000/bits=8/impl=xorfilter-8       	      37	  31440700 ns/op	        31.44 ns/item
+BenchmarkFuseNew/n=1000000/bits=8/impl=xorfilter-8       	      37	  31426964 ns/op	        31.43 ns/item
+BenchmarkFuseNew/n=1000000/bits=16/impl=xorfilter-8      	      37	  31594455 ns/op	        31.59 ns/item
+BenchmarkFuseNew/n=1000000/bits=16/impl=xorfilter-8      	      37	  31647626 ns/op	        31.65 ns/item
+BenchmarkFuseNew/n=1000000/bits=16/impl=xorfilter-8      	      37	  31669471 ns/op	        31.67 ns/item
+BenchmarkFuseNew/n=1000000/bits=16/impl=xorfilter-8      	      36	  31606477 ns/op	        31.61 ns/item
+BenchmarkFuseNew/n=1000000/bits=16/impl=xorfilter-8      	      37	  31507620 ns/op	        31.51 ns/item
+BenchmarkFuseNew/n=1000000/bits=16/impl=xorfilter-8      	      37	  31571246 ns/op	        31.57 ns/item
+BenchmarkFuseNew/n=1000000/bits=8/impl=bloom-8           	     100	  11531287 ns/op	        11.53 ns/item
+BenchmarkFuseNew/n=1000000/bits=8/impl=bloom-8           	     100	  11487598 ns/op	        11.49 ns/item
+BenchmarkFuseNew/n=1000000/bits=8/impl=bloom-8           	     100	  11497675 ns/op	        11.50 ns/item
+BenchmarkFuseNew/n=1000000/bits=8/impl=bloom-8           	     100	  11579649 ns/op	        11.58 ns/item
+BenchmarkFuseNew/n=1000000/bits=8/impl=bloom-8           	     100	  11528417 ns/op	        11.53 ns/item
+BenchmarkFuseNew/n=1000000/bits=8/impl=bloom-8           	     100	  11720512 ns/op	        11.72 ns/item
+BenchmarkFuseNew/n=1000000/bits=16/impl=bloom-8          	      62	  18939608 ns/op	        18.94 ns/item
+BenchmarkFuseNew/n=1000000/bits=16/impl=bloom-8          	      62	  18962773 ns/op	        18.96 ns/item
+BenchmarkFuseNew/n=1000000/bits=16/impl=bloom-8          	      63	  18921484 ns/op	        18.92 ns/item
+BenchmarkFuseNew/n=1000000/bits=16/impl=bloom-8          	      63	  18957552 ns/op	        18.96 ns/item
+BenchmarkFuseNew/n=1000000/bits=16/impl=bloom-8          	      63	  18863245 ns/op	        18.86 ns/item
+BenchmarkFuseNew/n=1000000/bits=16/impl=bloom-8          	      63	  18942550 ns/op	        18.94 ns/item
+PASS
+ok  	github.com/nalgeon/unsure/bench	57.386s
