@@ -32,3 +32,13 @@ From `make fuse-bench-full`. Contains 6–13% faster than the reference. New 11�
 | 28 / 34 | 7.6 / 8.4 / 39 | 7.6 / 8.4 / 39 | 11.26 / 9.50 / 9.02 |
 
 New is now 5–12% slower than the reference, all in the build itself.
+
+## 3. Build loop
+
+The low 2 bits of each cell's count XOR which of its 3 cells (0–2) that is for every hash in it (count += 4 per hash, as in the reference). A peeled hash is removed from all 3 of its cells uniformly, with no comparisons to find which one was peeled (a branch that mispredicted often). Caps a cell at 63 hashes, still only reachable with many duplicates. Build only (prehashed): 22.8 → 21.3 / 28.7 → 27.5 ns/item. Tried and dropped: branchless selects for the other 2 cells (no gain), min() for the overflow check (1% slower), mixing each hash once in the counting sort by keeping the mixed hashes in the xor buffer (3% faster, not worth the buffer doing double duty).
+
+| New     | ContainsHit    | ContainsMiss   | Size                |
+| ------- | -------------- | -------------- | ------------------- |
+| 26 / 32 | 7.6 / 8.4 / 39 | 7.6 / 8.4 / 39 | 11.26 / 9.50 / 9.02 |
+
+New is now 6% slower than the reference at 10k and 2% slower at 1M.

@@ -159,7 +159,7 @@ type builder struct {
 	starts []uint32 // counting sort: start of each bucket
 	stack  []uint64 // hashes sorted by bucket, then the peeling order
 	found  []uint8  // which of its 3 cells each stacked hash was peeled from
-	count  []uint8  // number of hashes in each cell
+	count  []uint8  // 4 × number of hashes in each cell, XOR which cell (0-2) it is for each
 	xor    []uint64 // XOR of the hashes in each cell
 	queue  []uint32 // cells with a single hash
 }
@@ -190,20 +190,24 @@ func (b *builder) peel(l *layout, hashes []uint64) bool {
 		b.starts[i]++
 	}
 
-	// Count the hashes in each cell and XOR them together.
+	// Count the hashes in each cell and XOR them together. The low 2 bits
+	// of the count XOR which of its 3 cells this is for each hash, so for
+	// a cell with a single hash, they tell which of the hash's cells it is.
 	b.count = resize(b.count, size)
 	b.xor = resize(b.xor, size)
 	count, xor := b.count, b.xor
 	for _, h := range b.stack {
 		h0, h1, h2 := l.positions(h)
-		count[h0]++
-		count[h1]++
-		count[h2]++
+		count[h0] += 4
+		count[h1] += 4
+		count[h1] ^= 1
+		count[h2] += 4
+		count[h2] ^= 2
 		xor[h0] ^= h
 		xor[h1] ^= h
 		xor[h2] ^= h
-		if count[h0] == 0 || count[h1] == 0 || count[h2] == 0 {
-			return false // 256 hashes in a cell: many duplicates
+		if count[h0] < 4 || count[h1] < 4 || count[h2] < 4 {
+			return false // 64 hashes in a cell: many duplicates
 		}
 	}
 
@@ -211,15 +215,15 @@ func (b *builder) peel(l *layout, hashes []uint64) bool {
 	// to the stack, and remove it from its other 2 cells. Repeat until no
 	// such cell is left.
 	//
-	// A cell enters the queue when its count is 1: at the start, or when
-	// it drops from 2. So at most size cells enter it in total. Pushes are
+	// A cell enters the queue when it has a single hash: at the start, or
+	// when it drops from 2. So at most size cells enter it in total. Pushes are
 	// branchless: always write, advance only if the count is 1.
 	b.queue = resize(b.queue, size+1)
 	queue := b.queue
 	q := 0
 	for i, c := range count {
 		queue[q] = uint32(i)
-		if c == 1 {
+		if c>>2 == 1 {
 			q++
 		}
 	}
@@ -230,33 +234,35 @@ func (b *builder) peel(l *layout, hashes []uint64) bool {
 	for q > 0 {
 		q--
 		i := queue[q]
-		if count[i] != 1 {
+		if count[i]>>2 != 1 {
 			continue // emptied since it was queued
 		}
-		count[i] = 0
 		h := xor[i]
-		h0, h1, h2 := l.positions(h)
-		// The other 2 cells, and which of the 3 cells i is.
-		a, c, f := h1, h2, uint8(0)
-		if i == h1 {
-			a, f = h0, 1
-		} else if i == h2 {
-			c, f = h0, 2
-		}
 		stack[s] = h
-		found[s] = f
+		found[s] = count[i] & 3
 		s++
 
-		count[a]--
-		xor[a] ^= h
-		queue[q] = a
-		if count[a] == 1 {
+		// Remove the hash from all 3 cells: no need to find out which
+		// of them is i, as i just becomes empty.
+		h0, h1, h2 := l.positions(h)
+		count[h0] -= 4
+		xor[h0] ^= h
+		queue[q] = h0
+		if count[h0]>>2 == 1 {
 			q++
 		}
-		count[c]--
-		xor[c] ^= h
-		queue[q] = c
-		if count[c] == 1 {
+		count[h1] -= 4
+		count[h1] ^= 1
+		xor[h1] ^= h
+		queue[q] = h1
+		if count[h1]>>2 == 1 {
+			q++
+		}
+		count[h2] -= 4
+		count[h2] ^= 2
+		xor[h2] ^= h
+		queue[q] = h2
+		if count[h2]>>2 == 1 {
 			q++
 		}
 	}
