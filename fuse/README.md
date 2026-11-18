@@ -67,27 +67,27 @@ Compared to [FastFilter/xorfilter](https://github.com/FastFilter/xorfilter) (bin
 
 | Operation        | Items |  unsure | xorfilter |  bloom |
 | ---------------- | ----: | ------: | --------: | -----: |
-| Build (per item) |   10K |      25 |        25 | **13** |
-|                  |    1M |      32 |        32 | **12** |
-| Contains, hit    |   10K | **7.6** |       8.1 |    9.2 |
-|                  |    1M | **8.4** |       9.2 |   10.2 |
-|                  |   50M |  **39** |        44 |     40 |
-| Contains, miss   |   10K | **7.6** |       8.0 |    9.2 |
-|                  |    1M | **8.4** |       9.1 |   10.2 |
-|                  |   50M |  **39** |        43 |     41 |
+| Build (per item) |   10K |      23 |        25 | **13** |
+|                  |    1M |      30 |        31 | **12** |
+| Contains, hit    |   10K | **6.2** |       8.0 |    9.3 |
+|                  |    1M | **7.0** |       9.3 |   10.2 |
+|                  |   50M |  **39** |        42 |     40 |
+| Contains, miss   |   10K | **6.2** |       8.0 |    9.2 |
+|                  |    1M | **6.9** |       9.1 |   10.2 |
+|                  |   50M |  **39** |        42 |     41 |
 
 16-bit fingerprints (false positive rate 0.0015%):
 
 | Operation        | Items |  unsure | xorfilter |  bloom |
 | ---------------- | ----: | ------: | --------: | -----: |
-| Build (per item) |   10K |      25 |        25 | **19** |
-|                  |    1M |      32 |        32 | **19** |
-| Contains, hit    |   10K | **7.6** |       8.1 |   13.2 |
-|                  |    1M | **8.6** |       9.3 |   16.3 |
-|                  |   50M |  **44** |        47 |     59 |
-| Contains, miss   |   10K | **7.6** |       8.0 |   13.2 |
-|                  |    1M | **8.5** |       9.3 |   16.3 |
-|                  |   50M |  **42** |        47 |     60 |
+| Build (per item) |   10K |      24 |        25 | **19** |
+|                  |    1M |      30 |        32 | **19** |
+| Contains, hit    |   10K | **6.1** |       8.1 |   13.3 |
+|                  |    1M | **7.1** |       9.3 |   16.3 |
+|                  |   50M |  **41** |        46 |     58 |
+| Contains, miss   |   10K | **6.3** |       8.0 |   13.2 |
+|                  |    1M | **7.2** |       9.3 |   16.2 |
+|                  |   50M |  **40** |        46 |     59 |
 
 Memory, bits per item (lower is better):
 
@@ -98,7 +98,7 @@ Memory, bits per item (lower is better):
 |   10M | 8-bit       |  **9.02** |  **9.02** | 12.10 |
 |   10M | 16-bit      | **18.04** | **18.04** | 27.99 |
 
-Overall, _unsure_ is the same size as _xorfilter_ (same layout), with 6–13% faster checks and same-speed builds. Compared to the Bloom filter, it uses 24–36% less memory (8% for 1K items), with checks as fast or faster, but 1.3–2.6× slower builds.
+Overall, _unsure_ is the same size as _xorfilter_ (same layout), with 22–25% faster checks (8–13% for 50M items, where memory access dominates) and 4–6% faster builds. Compared to the Bloom filter, it uses 24–36% less memory (8% for 1K items), with checks as fast or faster, but 1.2–2.6× slower builds.
 
 To reproduce, run `make fuse-bench-full` and `make fuse-size` from the repository root.
 

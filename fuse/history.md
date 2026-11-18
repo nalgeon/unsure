@@ -52,3 +52,13 @@ Duplicate hashes are never peeled (their cells keep at least 2 hashes), so after
 | 25 / 31 | 7.6 / 8.4 / 39 | 7.6 / 8.4 / 39 | 11.26 / 9.50 / 9.02 |
 
 New now matches the reference (about 1% faster at both sizes). Contains and size are unchanged (not re-measured: the build doesn't affect them).
+
+## 5. No mix on the first attempt
+
+wyhash output is already well mixed, so the first attempt (seed 0) uses the item hash as is, and only retries apply `mix(h + seed)`. One `layout.hash` method for both the build and Contains; the branch on the seed is always predicted. Saves murmur's ~9-cycle dependency chain per lookup: Contains 16–18% faster at 10k / 1M, 2–6% at 50M (memory-bound), New 5% faster (two mixes per hash in the counting sort). Filters that needed a retry (~2%) keep the old lookup speed. Build attempts: mean 1.031 → 1.026, worst still 4. False positive rate unchanged (0.387% at 1M for 8 bits). `-count 10`, p=0.000.
+
+| New     | ContainsHit    | ContainsMiss   | Size                |
+| ------- | -------------- | -------------- | ------------------- |
+| 23 / 29 | 6.2 / 6.9 / 38 | 6.2 / 7.1 / 38 | 11.26 / 9.50 / 9.02 |
+
+New is now 6% faster than the reference, Contains 22–25% faster at 10k / 1M and 10% at 50M.

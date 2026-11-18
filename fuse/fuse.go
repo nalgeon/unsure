@@ -50,7 +50,7 @@ type Filter[T uint8 | uint16 | uint32] struct {
 
 // layout maps a hash to the 3 cells of an item.
 type layout struct {
-	seed        uint64 // added to the item hash before mixing; differs per build attempt
+	seed        uint64 // differs per build attempt, 0 for the first one (see hash)
 	segLen      uint32 // segment length, a power of 2
 	segMask     uint32 // segLen - 1
 	segCountLen uint32 // number of segments where the first cell can be, times segLen
@@ -80,7 +80,7 @@ func New[T uint8 | uint16 | uint32](items iter.Seq[[]byte], n int) *Filter[T] {
 // it's probably in the filter, with probability of a false positive 2^-bits
 // for a T with that many bits.
 func (f *Filter[T]) Contains(item []byte) bool {
-	h := mix(wyhash.Hash(item, wyhash.Seed0) + f.seed)
+	h := f.hash(wyhash.Hash(item, wyhash.Seed0))
 	h0, h1, h2 := f.positions(h)
 	return T(fingerprint(h)) == f.fps[h0]^f.fps[h1]^f.fps[h2]
 }
@@ -151,6 +151,16 @@ func newLayout(n int) layout {
 	}
 }
 
+// hash derives the hash that the positions and the fingerprint come from.
+// The first attempt (seed 0) uses the item hash as is, since wyhash output is
+// already well mixed. Retries mix it with the seed, so the cells change.
+func (l *layout) hash(h uint64) uint64 {
+	if l.seed == 0 {
+		return h
+	}
+	return mix(h + l.seed)
+}
+
 // size returns the number of cells.
 func (l *layout) size() int {
 	return int(l.segCountLen) + 2*int(l.segLen)
@@ -201,14 +211,14 @@ func (b *builder) peel(l *layout, hashes []uint64) bool {
 	shift := 64 - bucketBits
 	b.starts = resize(b.starts, 1<<bucketBits+1)
 	for _, h := range hashes {
-		b.starts[mix(h+l.seed)>>shift+1]++
+		b.starts[l.hash(h)>>shift+1]++
 	}
 	for i := 1; i < len(b.starts); i++ {
 		b.starts[i] += b.starts[i-1]
 	}
 	b.stack = resize(b.stack, n)
 	for _, h := range hashes {
-		m := mix(h + l.seed)
+		m := l.hash(h)
 		i := m >> shift
 		b.stack[b.starts[i]] = m
 		b.starts[i]++
@@ -312,7 +322,7 @@ func (b *builder) dropDuplicates(l *layout, hashes []uint64) int {
 	count, xor, queue := b.count, b.xor, b.queue
 	b.core = b.core[:0]
 	for _, h := range hashes {
-		m := mix(h + l.seed)
+		m := l.hash(h)
 		h0, h1, h2 := l.positions(m)
 		if count[h0] >= 4 && count[h1] >= 4 && count[h2] >= 4 {
 			b.core = append(b.core, m)

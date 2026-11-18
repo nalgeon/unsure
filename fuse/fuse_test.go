@@ -61,6 +61,27 @@ func TestNoFalseNegatives(t *testing.T) {
 	}
 }
 
+// TestRetries checks filters that needed a retry, which derive their hashes
+// differently (see layout.hash).
+func TestRetries(t *testing.T) {
+	found := 0
+	for n := 1; n < 2000 && found < 5; n++ {
+		if _, attempts := build[uint8](hashKeys(uint64(n), n)); attempts == 1 {
+			continue
+		}
+		found++
+		keys := makeKeys(uint64(n), n)
+		f := New[uint8](slices.Values(keys), n)
+		if f.seed == 0 {
+			t.Fatalf("n=%d: seed 0 after a retry", n)
+		}
+		checkNoFalseNegatives(t, f, keys)
+	}
+	if found == 0 {
+		t.Fatal("no size needed a retry")
+	}
+}
+
 func TestEdgeKeys(t *testing.T) {
 	keys := [][]byte{
 		nil,
