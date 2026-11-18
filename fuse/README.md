@@ -4,7 +4,7 @@
 
 A binary fuse filter is a set that trades certainty for space, just like a [Bloom filter](../bloom/README.md). It can tell you that an item is _definitely not_ in the set, or that it _probably is_ (which might be a false positive). The filter doesn't store the items, so it's much more compact than a regular set.
 
-Unlike a Bloom filter, a binary fuse filter is _static_: you build it once from all the items, and you can't add more later. In exchange, it uses 25–36% less memory than a Bloom filter with the same false positive rate. For example, a filter for 1,000,000 items with a 0.39% false positive rate takes 1.13 MB (9 bits per item), while a Bloom filter takes 1.51 MB (12 bits per item).
+Unlike a Bloom filter, a binary fuse filter is _static_: you build it once from all the items, and you can't add more later. In exchange, it uses 24–36% less memory than a Bloom filter with the same false positive rate. For example, a filter for 1,000,000 items with a 0.39% false positive rate takes 1.13 MB (9 bits per item), while a Bloom filter takes 1.51 MB (12 bits per item).
 
 This makes binary fuse filters a good fit for data that is written once and read many times, like the key set of an immutable file in a database (to skip files that don't have the key), or a list of known bad items, such as leaked passwords or malicious URLs.
 
@@ -67,7 +67,7 @@ Compared to [FastFilter/xorfilter](https://github.com/FastFilter/xorfilter) (bin
 
 | Operation        | Items |  unsure | xorfilter |  bloom |
 | ---------------- | ----: | ------: | --------: | -----: |
-| Build (per item) |   10K |      26 |        25 | **13** |
+| Build (per item) |   10K |      25 |        25 | **13** |
 |                  |    1M |      32 |        32 | **12** |
 | Contains, hit    |   10K | **7.6** |       8.1 |    9.2 |
 |                  |    1M | **8.4** |       9.2 |   10.2 |
@@ -80,7 +80,7 @@ Compared to [FastFilter/xorfilter](https://github.com/FastFilter/xorfilter) (bin
 
 | Operation        | Items |  unsure | xorfilter |  bloom |
 | ---------------- | ----: | ------: | --------: | -----: |
-| Build (per item) |   10K |      26 |        25 | **19** |
+| Build (per item) |   10K |      25 |        25 | **19** |
 |                  |    1M |      32 |        32 | **19** |
 | Contains, hit    |   10K | **7.6** |       8.1 |   13.2 |
 |                  |    1M | **8.6** |       9.3 |   16.3 |
@@ -98,7 +98,7 @@ Memory, bits per item (lower is better):
 |   10M | 8-bit       |  **9.02** |  **9.02** | 12.10 |
 |   10M | 16-bit      | **18.04** | **18.04** | 27.99 |
 
-Overall, _unsure_ is the same size as _xorfilter_ (same layout), with 6–13% faster checks and 2–6% slower builds. Compared to the Bloom filter, it uses 24–36% less memory (8% for 1K items), with checks as fast or faster, but 1.4–2.7× slower builds.
+Overall, _unsure_ is the same size as _xorfilter_ (same layout), with 6–13% faster checks and same-speed builds. Compared to the Bloom filter, it uses 24–36% less memory (8% for 1K items), with checks as fast or faster, but 1.3–2.6× slower builds.
 
 To reproduce, run `make fuse-bench-full` and `make fuse-size` from the repository root.
 

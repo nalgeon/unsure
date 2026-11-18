@@ -105,8 +105,8 @@ func TestDuplicates(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			f := New[uint8](slices.Values(c.keys), len(c.keys))
 			checkNoFalseNegatives(t, f, c.keys)
-			// Duplicates always fail the first attempt, so the filter
-			// is sized for the distinct keys.
+			// Duplicates are removed before the filter is sized,
+			// so it's sized for the distinct keys.
 			seen := map[string]bool{}
 			var distinct [][]byte
 			for _, k := range c.keys {
@@ -119,6 +119,31 @@ func TestDuplicates(t *testing.T) {
 				t.Errorf("size %d, want %d (distinct keys only)", f.Size(), want)
 			}
 		})
+	}
+}
+
+// TestFewDuplicates checks that a few duplicates don't cost an extra attempt
+// when removing them keeps the filter size, so the failed peel is resumed.
+func TestFewDuplicates(t *testing.T) {
+	tested := 0
+	for _, n := range []int{100, 1000, 10_000, 300_000} {
+		for _, dups := range []int{1, 2, 5} {
+			uniq := hashKeys(uint64(n), n)
+			_, want := build[uint8](slices.Clone(uniq))
+			// The first dups hashes twice, and the first one 3 times.
+			hashes := append(slices.Clone(uniq), uniq[:dups]...)
+			hashes = append(hashes, uniq[0])
+			if newLayout(n) != newLayout(len(hashes)) {
+				continue // the fallback sorts, tested in TestDuplicates
+			}
+			if _, got := build[uint8](hashes); got != want {
+				t.Errorf("n=%d dups=%d: %d attempts, want %d", n, dups, got, want)
+			}
+			tested++
+		}
+	}
+	if tested < 6 {
+		t.Errorf("only %d cases kept the layout", tested)
 	}
 }
 

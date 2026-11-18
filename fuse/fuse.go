@@ -102,15 +102,28 @@ func build[T uint8 | uint16 | uint32](hashes []uint64) (*Filter[T], int) {
 		l := newLayout(len(hashes))
 		l.seed = uint64(attempt-1) * 0x9e3779b97f4a7c15
 		if b.peel(&l, hashes) {
-			return &Filter[T]{layout: l, fps: assign[T](&l, b.stack, b.found)}, attempt
+			return newFilter[T](&b, &l), attempt
 		}
-		// Duplicate hashes can never be peeled. Remove them once,
-		// then keep retrying with new seeds.
-		if !deduped {
-			slices.Sort(hashes)
-			hashes = slices.Compact(hashes)
-			deduped = true
+		if deduped {
+			continue
 		}
+		// Duplicate hashes can never be peeled, so they're all left over.
+		// Drop the extra copies and resume peeling, unless that would change
+		// the filter size. If that doesn't work, remove them by sorting.
+		if !b.overflow {
+			removed := b.dropDuplicates(&l, hashes)
+			if removed == 0 {
+				deduped = true // a failure without duplicates: just retry
+				continue
+			}
+			want := newLayout(len(hashes) - removed)
+			if want.segLen == l.segLen && want.segCountLen == l.segCountLen && b.drain(&l) {
+				return newFilter[T](&b, &l), attempt
+			}
+		}
+		slices.Sort(hashes)
+		hashes = slices.Compact(hashes)
+		deduped = true
 	}
 }
 
@@ -162,6 +175,16 @@ type builder struct {
 	count  []uint8  // 4 × number of hashes in each cell, XOR which cell (0-2) it is for each
 	xor    []uint64 // XOR of the hashes in each cell
 	queue  []uint32 // cells with a single hash
+	core   []uint64 // hashes left over after a failed peel
+
+	q, s     int  // queue length, number of peeled hashes
+	want     int  // number of hashes to peel
+	overflow bool // the last attempt failed before peeling
+}
+
+// newFilter assigns the fingerprints for a successful peel.
+func newFilter[T uint8 | uint16 | uint32](b *builder, l *layout) *Filter[T] {
+	return &Filter[T]{layout: *l, fps: assign[T](l, b.stack[:b.s], b.found[:b.s])}
 }
 
 // peel finds an order to assign the hashes in: each hash in b.stack has a cell
@@ -170,6 +193,7 @@ type builder struct {
 func (b *builder) peel(l *layout, hashes []uint64) bool {
 	n := len(hashes)
 	size := l.size()
+	b.overflow = false
 
 	// Sort the mixed hashes by their first cell, roughly, so that
 	// the counting loop below walks the cell array in order.
@@ -207,17 +231,15 @@ func (b *builder) peel(l *layout, hashes []uint64) bool {
 		xor[h1] ^= h
 		xor[h2] ^= h
 		if count[h0] < 4 || count[h1] < 4 || count[h2] < 4 {
+			b.overflow = true
 			return false // 64 hashes in a cell: many duplicates
 		}
 	}
 
-	// Peel: take a cell with a single hash (now in xor), push the hash
-	// to the stack, and remove it from its other 2 cells. Repeat until no
-	// such cell is left.
-	//
-	// A cell enters the queue when it has a single hash: at the start, or
-	// when it drops from 2. So at most size cells enter it in total. Pushes are
-	// branchless: always write, advance only if the count is 1.
+	// Queue the cells with a single hash. A cell enters the queue when
+	// it has a single hash: here, or when it drops from 2 while peeling.
+	// So at most size cells enter it in total. Pushes are branchless:
+	// always write, advance only if the count is 1.
 	b.queue = resize(b.queue, size+1)
 	queue := b.queue
 	q := 0
@@ -227,10 +249,19 @@ func (b *builder) peel(l *layout, hashes []uint64) bool {
 			q++
 		}
 	}
-	stack := b.stack // the sorted hashes are no longer needed
 	b.found = resize(b.found, n)
+	b.q, b.s, b.want = q, 0, n
+	return b.drain(l)
+}
+
+// drain peels hashes until the queue is empty: take a cell with a single hash
+// (now in xor), push the hash to the stack, and remove it from its other 2
+// cells. Returns true if all b.want hashes are peeled.
+func (b *builder) drain(l *layout) bool {
+	count, xor, queue := b.count, b.xor, b.queue
+	stack := b.stack // the sorted hashes are no longer needed
 	found := b.found
-	s := 0
+	q, s := b.q, b.s
 	for q > 0 {
 		q--
 		i := queue[q]
@@ -266,9 +297,60 @@ func (b *builder) peel(l *layout, hashes []uint64) bool {
 			q++
 		}
 	}
-	b.stack = stack[:s]
-	b.found = found[:s]
-	return s == n
+	b.q, b.s = q, s
+	return s == b.want
+}
+
+// dropDuplicates removes the extra copies of duplicate hashes from the cells
+// after a failed peel, queues the cells left with a single hash, and returns
+// the number of copies removed.
+//
+// Duplicates are never peeled: their cells hold at least 2 hashes while both
+// copies are there. So they are among the hashes left over, which are exactly
+// the ones whose 3 cells are all non-empty (a peeled hash emptied its cell).
+func (b *builder) dropDuplicates(l *layout, hashes []uint64) int {
+	count, xor, queue := b.count, b.xor, b.queue
+	b.core = b.core[:0]
+	for _, h := range hashes {
+		m := mix(h + l.seed)
+		h0, h1, h2 := l.positions(m)
+		if count[h0] >= 4 && count[h1] >= 4 && count[h2] >= 4 {
+			b.core = append(b.core, m)
+		}
+	}
+	slices.Sort(b.core)
+	q, removed := b.q, 0
+	for i := 1; i < len(b.core); i++ {
+		h := b.core[i]
+		if h != b.core[i-1] {
+			continue
+		}
+		removed++
+		h0, h1, h2 := l.positions(h)
+		count[h0] -= 4
+		xor[h0] ^= h
+		queue[q] = h0
+		if count[h0]>>2 == 1 {
+			q++
+		}
+		count[h1] -= 4
+		count[h1] ^= 1
+		xor[h1] ^= h
+		queue[q] = h1
+		if count[h1]>>2 == 1 {
+			q++
+		}
+		count[h2] -= 4
+		count[h2] ^= 2
+		xor[h2] ^= h
+		queue[q] = h2
+		if count[h2]>>2 == 1 {
+			q++
+		}
+	}
+	b.q = q
+	b.want -= removed
+	return removed
 }
 
 // assign fills the fingerprints in reverse peeling order: each hash sets its

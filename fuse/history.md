@@ -42,3 +42,13 @@ The low 2 bits of each cell's count XOR which of its 3 cells (0–2) that is for
 | 26 / 32 | 7.6 / 8.4 / 39 | 7.6 / 8.4 / 39 | 11.26 / 9.50 / 9.02 |
 
 New is now 6% slower than the reference at 10k and 2% slower at 1M.
+
+## 4. Duplicates without a rebuild
+
+Duplicate hashes are never peeled (their cells keep at least 2 hashes), so after a failed peel they're all in the leftover core: the hashes whose 3 cells are all non-empty. A scan finds the core, the extra copies are removed from their cells, and peeling resumes in the same attempt. Falls back to sorting the hashes if removing them changes the filter size (many duplicates at small n), the counting loop overflowed, or resuming still fails. A failure without duplicates no longer sorts. Build (prehashed) with one duplicate: 90 → 22 / 119 → 29 ns/item, vs 20 / 26 without. Unique input also got faster (26.3 → 24.7 / 31.8 → 31.2 ns/item, `-count 10`, p=0.000) with the peel loop split into its own function; cause not verified. Build attempts unchanged: mean 1.031, worst 4.
+
+| New     | ContainsHit    | ContainsMiss   | Size                |
+| ------- | -------------- | -------------- | ------------------- |
+| 25 / 31 | 7.6 / 8.4 / 39 | 7.6 / 8.4 / 39 | 11.26 / 9.50 / 9.02 |
+
+New now matches the reference (about 1% faster at both sizes). Contains and size are unchanged (not re-measured: the build doesn't affect them).
