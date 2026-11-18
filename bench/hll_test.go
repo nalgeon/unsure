@@ -4,7 +4,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"runtime"
 	"slices"
+	"sync"
 	"testing"
 
 	"github.com/axiomhq/hyperloglog"
@@ -65,6 +67,50 @@ var hllImpls = []hllImpl{
 	}},
 }
 
+// hllResult is the bias and RMSE of the relative error over many sketches.
+type hllResult struct{ bias, rmse float64 }
+
+// hllAccuracy adds distinct keys to trials independent sketches from
+// newSketch, and returns the bias and RMSE of the estimate at each of points
+// (ascending). Trial t adds keys (t, 0), (t, 1), ... Trials run in parallel.
+func hllAccuracy(newSketch func() hllSketch, points []int, trials int) []hllResult {
+	errs := make([][]float64, trials) // errs[trial][point]
+	next := make(chan int)
+	var wg sync.WaitGroup
+	for range runtime.GOMAXPROCS(0) {
+		wg.Go(func() {
+			for trial := range next {
+				var key [16]byte
+				binary.LittleEndian.PutUint64(key[:8], uint64(trial))
+				s := newSketch()
+				n := 0
+				for _, pt := range points {
+					for ; n < pt; n++ {
+						binary.LittleEndian.PutUint64(key[8:], uint64(n))
+						s.Add(key[:])
+					}
+					errs[trial] = append(errs[trial], float64(s.Count())/float64(n)-1)
+				}
+			}
+		})
+	}
+	for trial := range trials {
+		next <- trial
+	}
+	close(next)
+	wg.Wait()
+	res := make([]hllResult, len(points))
+	for j := range points {
+		var sum, sum2 float64
+		for _, e := range errs {
+			sum += e[j]
+			sum2 += e[j] * e[j]
+		}
+		res[j] = hllResult{sum / float64(trials), math.Sqrt(sum2 / float64(trials))}
+	}
+	return res
+}
+
 // TestHLLAccuracy reports the bias and relative standard error of all
 // implementations at the same number of registers, over many independent
 // sketches and cardinalities from tiny to far beyond the number of registers.
@@ -72,36 +118,13 @@ var hllImpls = []hllImpl{
 func TestHLLAccuracy(t *testing.T) {
 	const p = 14
 	const m = 1 << p
-	const trials = 100
+	const trials = 1000
 	// From tiny, through the 2.5m–5m range where the original HyperLogLog
 	// switches estimators, to far beyond m.
 	points := []int{100, 1000, 10_000, 20_000, 40_000, 80_000, 160_000, 1_000_000}
-	type result struct{ bias, rmse float64 }
-	res := make(map[string][]result)
+	res := make(map[string][]hllResult)
 	for _, im := range hllImpls {
-		sum := make([]float64, len(points))
-		sum2 := make([]float64, len(points))
-		var key [16]byte
-		for trial := range trials {
-			binary.LittleEndian.PutUint64(key[:8], uint64(trial))
-			s := im.new(p)
-			n := 0
-			for j, pt := range points {
-				for ; n < pt; n++ {
-					binary.LittleEndian.PutUint64(key[8:], uint64(n))
-					s.Add(key[:])
-				}
-				e := float64(s.Count())/float64(n) - 1
-				sum[j] += e
-				sum2[j] += e * e
-			}
-		}
-		for j := range points {
-			res[im.name] = append(res[im.name], result{
-				sum[j] / float64(trials),
-				math.Sqrt(sum2[j] / float64(trials)),
-			})
-		}
+		res[im.name] = hllAccuracy(func() hllSketch { return im.new(p) }, points, trials)
 	}
 	stdErr := 1.04 / math.Sqrt(m)
 	worse := 0
@@ -120,13 +143,13 @@ func TestHLLAccuracy(t *testing.T) {
 			t.Errorf("n=%d: rmse %.4f, more than stdErr (%.4f)", n, ours.rmse, stdErr)
 		}
 		// Below m, the reference is in sparse mode and nearly exact.
-		if n >= m && ours.rmse > ref.rmse*1.2 {
+		// With 1000 trials, an RMSE is within ±5% about 95% of the time.
+		if n >= m && ours.rmse > ref.rmse*1.1 {
 			worse++
 		}
 	}
-	// With 100 trials, an RMSE is within ±20% about 95% of the time.
 	if worse > 1 {
-		t.Errorf("rmse is over 1.2× the reference at %d cardinalities", worse)
+		t.Errorf("rmse is over 1.1× the reference at %d cardinalities", worse)
 	}
 }
 
@@ -239,61 +262,67 @@ func BenchmarkHLLMerge(b *testing.B) {
 		for _, cs := range []string{"same", "disjoint"} {
 			for _, im := range hllImpls {
 				b.Run(fmt.Sprintf("p=%d/case=%s/impl=%s", p, cs, im.name), func(b *testing.B) {
-					fill := func(seed uint64) hllSketch {
-						s := im.new(p)
-						for _, k := range makeKeys(seed, hllBenchKeys) {
-							s.Add(k)
-						}
-						return s
-					}
-					base, other := fill(1), fill(2)
-					// Not every implementation can clone,
-					// so copy by merging into an empty sketch.
-					copyBase := func() hllSketch {
-						s := im.new(p)
-						if err := s.Merge(base); err != nil {
-							b.Fatal(err)
-						}
-						return s
-					}
-					if cs == "same" {
-						s := copyBase()
-						if err := s.Merge(other); err != nil {
-							b.Fatal(err)
-						}
-						for b.Loop() {
-							if err := s.Merge(other); err != nil {
-								b.Fatal(err)
-							}
-						}
-						return
-					}
-					// Merging the same other every time lets the branch
-					// predictor learn the pattern of growing registers
-					// (it does at p=10), so rotate between several.
-					others := []hllSketch{other}
-					for seed := range uint64(hllMergeOthers - 1) {
-						others = append(others, fill(3+seed))
-					}
-					batch := make([]hllSketch, max(1, hllMergeBatch>>p))
-					i := len(batch)
-					for b.Loop() {
-						if i == len(batch) {
-							b.StopTimer()
-							for j := range batch {
-								batch[j] = copyBase()
-							}
-							i = 0
-							b.StartTimer()
-						}
-						if err := batch[i].Merge(others[i%len(others)]); err != nil {
-							b.Fatal(err)
-						}
-						i++
-					}
+					benchHLLMerge(b, im, p, cs)
 				})
 			}
 		}
+	}
+}
+
+// benchHLLMerge runs one case of BenchmarkHLLMerge for implementation im
+// with 2^p registers.
+func benchHLLMerge(b *testing.B, im hllImpl, p int, cs string) {
+	fill := func(seed uint64) hllSketch {
+		s := im.new(p)
+		for _, k := range makeKeys(seed, hllBenchKeys) {
+			s.Add(k)
+		}
+		return s
+	}
+	base, other := fill(1), fill(2)
+	// Not every implementation can clone,
+	// so copy by merging into an empty sketch.
+	copyBase := func() hllSketch {
+		s := im.new(p)
+		if err := s.Merge(base); err != nil {
+			b.Fatal(err)
+		}
+		return s
+	}
+	if cs == "same" {
+		s := copyBase()
+		if err := s.Merge(other); err != nil {
+			b.Fatal(err)
+		}
+		for b.Loop() {
+			if err := s.Merge(other); err != nil {
+				b.Fatal(err)
+			}
+		}
+		return
+	}
+	// Merging the same other every time lets the branch
+	// predictor learn the pattern of growing registers
+	// (it does at p=10), so rotate between several.
+	others := []hllSketch{other}
+	for seed := range uint64(hllMergeOthers - 1) {
+		others = append(others, fill(3+seed))
+	}
+	batch := make([]hllSketch, max(1, hllMergeBatch>>p))
+	i := len(batch)
+	for b.Loop() {
+		if i == len(batch) {
+			b.StopTimer()
+			for j := range batch {
+				batch[j] = copyBase()
+			}
+			i = 0
+			b.StartTimer()
+		}
+		if err := batch[i].Merge(others[i%len(others)]); err != nil {
+			b.Fatal(err)
+		}
+		i++
 	}
 }
 

@@ -6,13 +6,13 @@ The `unsure` module implements probabilistic data structures in Go. It's **simpl
 
 ## Data structures
 
-[Bloom filter](./bloom/README.md) and [Binary fuse filter](./fuse/README.md) check if an item is in a set. The binary fuse is more compact, but unlike Bloom, it can't be changed after creation.
+[Bloom filter](./bloom/README.md) and [Binary fuse filter](./fuse/README.md) check if an item might be in a set. The binary fuse is more compact, but unlike Bloom, it can't be changed after creation.
 
 [Count-min sketch](./countmin/README.md) estimates how many times each item has occurred.
 
-[HyperLogLog](./hll/README.md) estimates the number of distinct items.
+[HyperLogLog](./hll/README.md) and [UltraLogLog](./ull/README.md) estimate the number of distinct items. UltraLogLog is more compact, but HyperLogLog is faster.
 
-[Log-linear histogram](./loghist/README.md) and [T-digest](./tdigest/README.md) estimate quantiles of a stream of numbers. The histogram is more accurate, but the T-digest is more compact.
+[T-digest](./tdigest/README.md) and [Log-linear histogram](./loghist/README.md) estimate quantiles of a stream of numbers. The t-digest is more compact, but the histogram is more accurate.
 
 [Top-k sketch](./topk/README.md) finds the most frequent items in a stream.
 

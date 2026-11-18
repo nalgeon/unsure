@@ -1,10 +1,6 @@
 # HyperLogLog
 
-A simple and fast HyperLogLog implemented in Go.
-
-## What is HyperLogLog
-
-HyperLogLog is a unique items counter that trades accuracy for space. It tells you approximately how many _distinct items_ it has seen, no matter how many times each one appeared. HyperLogLog (also called a _sketch_ from here on) doesn't actually store the items, so it's much more compact than a regular set.
+HyperLogLog is a unique items counter that trades accuracy for space. It tells you approximately how many _distinct items_ it has seen, no matter how many times each one appeared. HyperLogLog (also called a _sketch_ from here on) doesn't store the items, so it's much more compact than a regular set.
 
 For example, a regular set of 1,000,000 distinct 8-byte strings takes about 64 MB. A HyperLogLog sketch counting the same strings with about 0.8% error uses only 16 KB — that's almost 4,000 times smaller. The size of the sketch doesn't depend on the number of items or their size, only on the accuracy you choose. A 16 KB sketch counts a billion items as accurately as a thousand.
 
@@ -111,13 +107,13 @@ The `Count` gap comes from the estimation algorithm. _axiomhq_ and _BoomFilters_
 
 `Merge` combines two sketches filled with different items, so about half of the registers increase.
 
-Accuracy at p=14 (0.81% standard error), relative RMSE over 100 sketches (lower is better):
+Accuracy at p=14 (0.81% standard error), relative RMSE over 1,000 sketches (lower is better):
 
 | Distinct items |    unsure |     axiom | BoomFilters |
 | -------------- | --------: | --------: | ----------: |
-| 1,000          |     0.63% | **0.02%** |       4.04% |
-| 40,000         | **0.64%** |     0.71% |       50.8% |
-| 1,000,000      | **0.79%** |     0.89% |        9.9% |
+| 1,000          |     0.54% | **0.01%** |       4.06% |
+| 40,000         | **0.68%** |     0.69% |       50.8% |
+| 1,000,000      | **0.79%** |     0.82% |        9.9% |
 
 _axiomhq_ is nearly exact below ~16,000 items thanks to its sparse mode. Above that, _unsure_ and _axiomhq_ are equally accurate. _BoomFilters_ is far off (up to 50%) around 20,000–40,000 items.
 

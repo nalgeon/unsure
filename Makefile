@@ -5,6 +5,7 @@ HLL_REF := testdata/hll-reference.txt
 LH_REF := testdata/loghist-reference.txt
 TD_REF := testdata/tdigest-reference.txt
 TK_REF := testdata/topk-reference.txt
+ULL_REF := testdata/ull-reference.txt
 
 # Fuzzing time per target, e.g. make loghist-fuzz FUZZTIME=10m.
 FUZZTIME ?= 2m
@@ -16,6 +17,7 @@ FUZZTIME ?= 2m
 .PHONY: loghist-test loghist-bench loghist-bench-ref loghist-bench-full loghist-accuracy loghist-fuzz
 .PHONY: tdigest-test tdigest-bench tdigest-bench-ref tdigest-bench-full tdigest-accuracy tdigest-fuzz
 .PHONY: topk-test topk-bench topk-bench-ref topk-bench-full topk-accuracy topk-fuzz
+.PHONY: ull-test ull-bench ull-bench-ref ull-bench-full ull-accuracy
 
 # Typical tasks for each data structure:
 # - "test" - functional and accuracy tests.
@@ -110,6 +112,30 @@ hll-bench-full:
 
 hll-accuracy:
 	@go test -C bench -v -run '^TestHLL(Accuracy|Size)$$' . | grep -E 'rmse=|KB' | sed 's/^.*_test.go:[0-9]*: //'
+
+# UltraLogLog.
+
+ull-test:
+	@GOOS=linux GOARCH=386 go vet ./ull
+	@go test ./ull
+	@go test -C bench -run ULL .
+
+ull-bench:
+	@(go test -C bench -run x -bench 'ULLAdd.*//impl=unsure' -benchtime 1000000x -count 3 . && \
+	  go test -C bench -run x -bench 'ULLCount//impl=unsure' -benchtime 200ms -count 3 . && \
+	  go test -C bench -run x -bench 'ULLMerge///impl=unsure' -benchtime 200ms -count 3 .) | benchstat -col /impl bench/$(ULL_REF) -
+
+ull-bench-ref:
+	@(go test -C bench -run x -bench 'ULLAdd.*//impl=(hll|axiom)' -benchtime 1000000x -count 6 . && \
+	  go test -C bench -run x -bench 'ULLCount//impl=(hll|axiom)' -count 6 . && \
+	  go test -C bench -run x -bench 'ULLMerge///impl=(hll|axiom)' -count 6 .) > bench/$(ULL_REF)
+
+ull-bench-full:
+	@(go test -C bench -run x -bench 'ULLAdd' -benchtime 1000000x -count 10 . && \
+	  go test -C bench -run x -bench 'ULL(Count|Merge)' -count 10 .) | benchstat -col /impl -
+
+ull-accuracy:
+	@go test -C bench -v -run '^TestULL(Accuracy|Size)$$' . | grep -E 'rmse=|KB' | sed 's/^.*_test.go:[0-9]*: //'
 
 # Log-linear histogram.
 

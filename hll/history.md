@@ -1,7 +1,7 @@
 # HyperLogLog history
 
 Benchmarks: `make hll-bench` (entries 0–1 from `make hll-bench-full`), Apple M1, 16-byte keys, sketch filled with 1M keys. ns/op for p = 10 / 14 / 18 (1 KB / 16 KB / 256 KB of registers).
-Accuracy: `make hll-accuracy`, p=14 (stdErr 0.81%), 100 sketches of distinct 16-byte keys. Relative RMSE at n = 1k / 40k (2.4m) / 1M, and size after 1M items.
+Accuracy: `make hll-accuracy`, p=14 (stdErr 0.81%), 100 sketches of distinct 16-byte keys (1000 from entry 4). Relative RMSE at n = 1k / 40k (2.4m) / 1M, and size after 1M items.
 
 ## 0. Baseline: axiomhq/hyperloglog v0.3.0 (2026-11-07)
 
@@ -46,3 +46,13 @@ Measured with 10k trials (random hashes): below p=8 the docs' "RMSE at most stdE
 Design: minP = 8 instead of tuning an n-dependent correction. Registers below p=8 saved at most 240 bytes next to the fixed 256-byte histogram, and precision() already clamps, so New(stdErr > 0.065) just gets p=8 (256 B). Correction kept (halves the bias at p=8). TestAccuracy now runs p=8/10/14. Add/Count/Merge, RMSE and size at p=14 unchanged.
 
 Point 3 of the same review: Size() now counts the 256-byte histogram (2^p + 256; it's half the sketch at p=8). TestAccuracy adds p=18 (n up to 1M ≈ 4m). Re-measured the small-n rounding bias from entry 1 (20k trials): worst −2.9% at n=16 for p=8, −1.5% at n=32 for p=10, −0.4% at n=128 for p=14, always under 0.5 in absolute terms. The α correction's part of it is −0.24% at p=8 and ≈0 at p ≥ 14, so it's almost all integer rounding.
+
+## 4. Accuracy with 1000 trials
+
+TestHLLAccuracy ran 100 trials, so each RMSE was only good to about ±7%: the README showed ours ahead of axiom at 40k (0.64 vs 0.71%) and 1M (0.79 vs 0.89%), but over 2000 trials they tie (0.68 vs 0.68%, 0.80 vs 0.82%). Now 1000 trials (±2%), run in parallel through a shared `hllAccuracy` helper (also used by TestULLAccuracy), ~12 s; the check vs axiom tightened from 1.2× to 1.1×. No code change.
+
+| RMSE                | Size    |
+| ------------------- | ------- |
+| 0.54 / 0.68 / 0.79% | 16.3 KB |
+
+axiom: 0.01 / 0.69 / 0.82%. Equal accuracy at n ≥ m (within ±4% at every point).

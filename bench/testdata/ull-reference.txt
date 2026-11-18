@@ -1,0 +1,162 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/nalgeon/unsure/bench
+cpu: Apple M1
+BenchmarkULLAdd/p=10/impl=hll-8         	 1000000	         9.728 ns/op
+BenchmarkULLAdd/p=10/impl=hll-8         	 1000000	         6.403 ns/op
+BenchmarkULLAdd/p=10/impl=hll-8         	 1000000	         5.691 ns/op
+BenchmarkULLAdd/p=10/impl=hll-8         	 1000000	         5.628 ns/op
+BenchmarkULLAdd/p=10/impl=hll-8         	 1000000	         5.525 ns/op
+BenchmarkULLAdd/p=10/impl=hll-8         	 1000000	         5.658 ns/op
+BenchmarkULLAdd/p=10/impl=axiom-8       	 1000000	         7.863 ns/op
+BenchmarkULLAdd/p=10/impl=axiom-8       	 1000000	         7.526 ns/op
+BenchmarkULLAdd/p=10/impl=axiom-8       	 1000000	         7.517 ns/op
+BenchmarkULLAdd/p=10/impl=axiom-8       	 1000000	         7.531 ns/op
+BenchmarkULLAdd/p=10/impl=axiom-8       	 1000000	         7.583 ns/op
+BenchmarkULLAdd/p=10/impl=axiom-8       	 1000000	         7.581 ns/op
+BenchmarkULLAdd/p=14/impl=hll-8         	 1000000	         5.691 ns/op
+BenchmarkULLAdd/p=14/impl=hll-8         	 1000000	         5.634 ns/op
+BenchmarkULLAdd/p=14/impl=hll-8         	 1000000	         5.628 ns/op
+BenchmarkULLAdd/p=14/impl=hll-8         	 1000000	         5.775 ns/op
+BenchmarkULLAdd/p=14/impl=hll-8         	 1000000	         5.618 ns/op
+BenchmarkULLAdd/p=14/impl=hll-8         	 1000000	         5.658 ns/op
+BenchmarkULLAdd/p=14/impl=axiom-8       	 1000000	         7.721 ns/op
+BenchmarkULLAdd/p=14/impl=axiom-8       	 1000000	         7.623 ns/op
+BenchmarkULLAdd/p=14/impl=axiom-8       	 1000000	         7.729 ns/op
+BenchmarkULLAdd/p=14/impl=axiom-8       	 1000000	         7.799 ns/op
+BenchmarkULLAdd/p=14/impl=axiom-8       	 1000000	         7.543 ns/op
+BenchmarkULLAdd/p=14/impl=axiom-8       	 1000000	         7.680 ns/op
+BenchmarkULLAdd/p=18/impl=hll-8         	 1000000	         8.384 ns/op
+BenchmarkULLAdd/p=18/impl=hll-8         	 1000000	         8.282 ns/op
+BenchmarkULLAdd/p=18/impl=hll-8         	 1000000	         8.312 ns/op
+BenchmarkULLAdd/p=18/impl=hll-8         	 1000000	         8.364 ns/op
+BenchmarkULLAdd/p=18/impl=hll-8         	 1000000	         8.323 ns/op
+BenchmarkULLAdd/p=18/impl=hll-8         	 1000000	         8.299 ns/op
+BenchmarkULLAdd/p=18/impl=axiom-8       	 1000000	         7.939 ns/op
+BenchmarkULLAdd/p=18/impl=axiom-8       	 1000000	         7.924 ns/op
+BenchmarkULLAdd/p=18/impl=axiom-8       	 1000000	         8.094 ns/op
+BenchmarkULLAdd/p=18/impl=axiom-8       	 1000000	         8.169 ns/op
+BenchmarkULLAdd/p=18/impl=axiom-8       	 1000000	         8.028 ns/op
+BenchmarkULLAdd/p=18/impl=axiom-8       	 1000000	         7.954 ns/op
+PASS
+ok  	github.com/nalgeon/unsure/bench	1.573s
+goos: darwin
+goarch: arm64
+pkg: github.com/nalgeon/unsure/bench
+cpu: Apple M1
+BenchmarkULLCount/p=10/impl=hll-8         	17289474	        69.20 ns/op
+BenchmarkULLCount/p=10/impl=hll-8         	17636694	        68.10 ns/op
+BenchmarkULLCount/p=10/impl=hll-8         	17575023	        68.09 ns/op
+BenchmarkULLCount/p=10/impl=hll-8         	17619786	        68.07 ns/op
+BenchmarkULLCount/p=10/impl=hll-8         	17579991	        68.19 ns/op
+BenchmarkULLCount/p=10/impl=hll-8         	17662080	        68.05 ns/op
+BenchmarkULLCount/p=10/impl=axiom-8       	   62997	     17938 ns/op
+BenchmarkULLCount/p=10/impl=axiom-8       	   67584	     17676 ns/op
+BenchmarkULLCount/p=10/impl=axiom-8       	   67582	     17737 ns/op
+BenchmarkULLCount/p=10/impl=axiom-8       	   68581	     17542 ns/op
+BenchmarkULLCount/p=10/impl=axiom-8       	   68295	     17691 ns/op
+BenchmarkULLCount/p=10/impl=axiom-8       	   66926	     17894 ns/op
+BenchmarkULLCount/p=14/impl=hll-8         	19278075	        62.38 ns/op
+BenchmarkULLCount/p=14/impl=hll-8         	19279869	        62.33 ns/op
+BenchmarkULLCount/p=14/impl=hll-8         	19208425	        62.47 ns/op
+BenchmarkULLCount/p=14/impl=hll-8         	19253511	        62.33 ns/op
+BenchmarkULLCount/p=14/impl=hll-8         	19185674	        62.34 ns/op
+BenchmarkULLCount/p=14/impl=hll-8         	19188474	        62.99 ns/op
+BenchmarkULLCount/p=14/impl=axiom-8       	    3482	    347584 ns/op
+BenchmarkULLCount/p=14/impl=axiom-8       	    3406	    345978 ns/op
+BenchmarkULLCount/p=14/impl=axiom-8       	    3488	    345513 ns/op
+BenchmarkULLCount/p=14/impl=axiom-8       	    3456	    345515 ns/op
+BenchmarkULLCount/p=14/impl=axiom-8       	    3501	    348011 ns/op
+BenchmarkULLCount/p=14/impl=axiom-8       	    3513	    347013 ns/op
+BenchmarkULLCount/p=18/impl=hll-8         	20993533	        57.00 ns/op
+BenchmarkULLCount/p=18/impl=hll-8         	21080106	        57.03 ns/op
+BenchmarkULLCount/p=18/impl=hll-8         	21027883	        57.06 ns/op
+BenchmarkULLCount/p=18/impl=hll-8         	21059157	        57.05 ns/op
+BenchmarkULLCount/p=18/impl=hll-8         	20983834	        57.07 ns/op
+BenchmarkULLCount/p=18/impl=hll-8         	21081510	        56.98 ns/op
+BenchmarkULLCount/p=18/impl=axiom-8       	     258	   4633450 ns/op
+BenchmarkULLCount/p=18/impl=axiom-8       	     258	   4624537 ns/op
+BenchmarkULLCount/p=18/impl=axiom-8       	     258	   4622960 ns/op
+BenchmarkULLCount/p=18/impl=axiom-8       	     259	   4617067 ns/op
+BenchmarkULLCount/p=18/impl=axiom-8       	     258	   4630054 ns/op
+BenchmarkULLCount/p=18/impl=axiom-8       	     258	   4631270 ns/op
+PASS
+ok  	github.com/nalgeon/unsure/bench	44.016s
+goos: darwin
+goarch: arm64
+pkg: github.com/nalgeon/unsure/bench
+cpu: Apple M1
+BenchmarkULLMerge/p=10/case=same/impl=hll-8         	 8865656	       125.4 ns/op
+BenchmarkULLMerge/p=10/case=same/impl=hll-8         	 9568251	       124.3 ns/op
+BenchmarkULLMerge/p=10/case=same/impl=hll-8         	 9707611	       124.4 ns/op
+BenchmarkULLMerge/p=10/case=same/impl=hll-8         	 9609778	       124.3 ns/op
+BenchmarkULLMerge/p=10/case=same/impl=hll-8         	 9616488	       124.8 ns/op
+BenchmarkULLMerge/p=10/case=same/impl=hll-8         	 9703471	       124.7 ns/op
+BenchmarkULLMerge/p=10/case=same/impl=axiom-8       	 2354602	       509.8 ns/op
+BenchmarkULLMerge/p=10/case=same/impl=axiom-8       	 2358882	       508.7 ns/op
+BenchmarkULLMerge/p=10/case=same/impl=axiom-8       	 2367100	       507.4 ns/op
+BenchmarkULLMerge/p=10/case=same/impl=axiom-8       	 2362112	       508.4 ns/op
+BenchmarkULLMerge/p=10/case=same/impl=axiom-8       	 2354251	       510.2 ns/op
+BenchmarkULLMerge/p=10/case=same/impl=axiom-8       	 2352498	       509.3 ns/op
+BenchmarkULLMerge/p=10/case=disjoint/impl=hll-8     	 1661486	       722.1 ns/op
+BenchmarkULLMerge/p=10/case=disjoint/impl=hll-8     	 1661607	       721.3 ns/op
+BenchmarkULLMerge/p=10/case=disjoint/impl=hll-8     	 1651380	       725.3 ns/op
+BenchmarkULLMerge/p=10/case=disjoint/impl=hll-8     	 1659782	       722.5 ns/op
+BenchmarkULLMerge/p=10/case=disjoint/impl=hll-8     	 1661809	       721.6 ns/op
+BenchmarkULLMerge/p=10/case=disjoint/impl=hll-8     	 1640563	       727.8 ns/op
+BenchmarkULLMerge/p=10/case=disjoint/impl=axiom-8   	  636974	      1865 ns/op
+BenchmarkULLMerge/p=10/case=disjoint/impl=axiom-8   	  638954	      1738 ns/op
+BenchmarkULLMerge/p=10/case=disjoint/impl=axiom-8   	  703610	      1680 ns/op
+BenchmarkULLMerge/p=10/case=disjoint/impl=axiom-8   	  663681	      1764 ns/op
+BenchmarkULLMerge/p=10/case=disjoint/impl=axiom-8   	  665900	      1799 ns/op
+BenchmarkULLMerge/p=10/case=disjoint/impl=axiom-8   	  689384	      1716 ns/op
+BenchmarkULLMerge/p=14/case=same/impl=hll-8         	  635985	      1885 ns/op
+BenchmarkULLMerge/p=14/case=same/impl=hll-8         	  636258	      1886 ns/op
+BenchmarkULLMerge/p=14/case=same/impl=hll-8         	  631527	      1886 ns/op
+BenchmarkULLMerge/p=14/case=same/impl=hll-8         	  643335	      1886 ns/op
+BenchmarkULLMerge/p=14/case=same/impl=hll-8         	  630939	      1884 ns/op
+BenchmarkULLMerge/p=14/case=same/impl=hll-8         	  634618	      1886 ns/op
+BenchmarkULLMerge/p=14/case=same/impl=axiom-8       	  151128	      7955 ns/op
+BenchmarkULLMerge/p=14/case=same/impl=axiom-8       	  149970	      7949 ns/op
+BenchmarkULLMerge/p=14/case=same/impl=axiom-8       	  151142	      7950 ns/op
+BenchmarkULLMerge/p=14/case=same/impl=axiom-8       	  151096	      7953 ns/op
+BenchmarkULLMerge/p=14/case=same/impl=axiom-8       	  150678	      7950 ns/op
+BenchmarkULLMerge/p=14/case=same/impl=axiom-8       	  150546	      7949 ns/op
+BenchmarkULLMerge/p=14/case=disjoint/impl=hll-8     	   59599	     20120 ns/op
+BenchmarkULLMerge/p=14/case=disjoint/impl=hll-8     	   59839	     20093 ns/op
+BenchmarkULLMerge/p=14/case=disjoint/impl=hll-8     	   59748	     20049 ns/op
+BenchmarkULLMerge/p=14/case=disjoint/impl=hll-8     	   59800	     20141 ns/op
+BenchmarkULLMerge/p=14/case=disjoint/impl=hll-8     	   59685	     20102 ns/op
+BenchmarkULLMerge/p=14/case=disjoint/impl=hll-8     	   59568	     20092 ns/op
+BenchmarkULLMerge/p=14/case=disjoint/impl=axiom-8   	   20654	     58076 ns/op
+BenchmarkULLMerge/p=14/case=disjoint/impl=axiom-8   	   20679	     58094 ns/op
+BenchmarkULLMerge/p=14/case=disjoint/impl=axiom-8   	   20580	     58312 ns/op
+BenchmarkULLMerge/p=14/case=disjoint/impl=axiom-8   	   20692	     58038 ns/op
+BenchmarkULLMerge/p=14/case=disjoint/impl=axiom-8   	   20653	     58256 ns/op
+BenchmarkULLMerge/p=14/case=disjoint/impl=axiom-8   	   20569	     58534 ns/op
+BenchmarkULLMerge/p=18/case=same/impl=hll-8         	   39843	     30124 ns/op
+BenchmarkULLMerge/p=18/case=same/impl=hll-8         	   39840	     30667 ns/op
+BenchmarkULLMerge/p=18/case=same/impl=hll-8         	   39855	     30125 ns/op
+BenchmarkULLMerge/p=18/case=same/impl=hll-8         	   39891	     30165 ns/op
+BenchmarkULLMerge/p=18/case=same/impl=hll-8         	   39889	     30104 ns/op
+BenchmarkULLMerge/p=18/case=same/impl=hll-8         	   39825	     30116 ns/op
+BenchmarkULLMerge/p=18/case=same/impl=axiom-8       	    9411	    127235 ns/op
+BenchmarkULLMerge/p=18/case=same/impl=axiom-8       	    9441	    127142 ns/op
+BenchmarkULLMerge/p=18/case=same/impl=axiom-8       	    9460	    127185 ns/op
+BenchmarkULLMerge/p=18/case=same/impl=axiom-8       	    9340	    127153 ns/op
+BenchmarkULLMerge/p=18/case=same/impl=axiom-8       	    9462	    127987 ns/op
+BenchmarkULLMerge/p=18/case=same/impl=axiom-8       	    9457	    127271 ns/op
+BenchmarkULLMerge/p=18/case=disjoint/impl=hll-8     	    3499	    341176 ns/op
+BenchmarkULLMerge/p=18/case=disjoint/impl=hll-8     	    3501	    341031 ns/op
+BenchmarkULLMerge/p=18/case=disjoint/impl=hll-8     	    3518	    340731 ns/op
+BenchmarkULLMerge/p=18/case=disjoint/impl=hll-8     	    3519	    341524 ns/op
+BenchmarkULLMerge/p=18/case=disjoint/impl=hll-8     	    3534	    341066 ns/op
+BenchmarkULLMerge/p=18/case=disjoint/impl=hll-8     	    3495	    341117 ns/op
+BenchmarkULLMerge/p=18/case=disjoint/impl=axiom-8   	    1251	    948821 ns/op
+BenchmarkULLMerge/p=18/case=disjoint/impl=axiom-8   	    1256	    947488 ns/op
+BenchmarkULLMerge/p=18/case=disjoint/impl=axiom-8   	    1267	    945471 ns/op
+BenchmarkULLMerge/p=18/case=disjoint/impl=axiom-8   	    1267	    947261 ns/op
+BenchmarkULLMerge/p=18/case=disjoint/impl=axiom-8   	    1256	    945326 ns/op
+BenchmarkULLMerge/p=18/case=disjoint/impl=axiom-8   	    1262	    946538 ns/op
+PASS
+ok  	github.com/nalgeon/unsure/bench	146.790s
