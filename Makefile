@@ -104,7 +104,8 @@ hll-bench:
 
 hll-bench-ref:
 	@(go test -C bench -run x -bench 'HLLAdd.*//impl=(axiom|boom)' -benchtime 1000000x -count 6 . && \
-	  go test -C bench -run x -bench 'HLL(Count|Merge).*//impl=(axiom|boom)' -count 6 .) > bench/$(HLL_REF)
+	  go test -C bench -run x -bench 'HLLCount//impl=(axiom|boom)' -count 6 . && \
+	  go test -C bench -run x -bench 'HLLMerge///impl=(axiom|boom)' -count 6 .) > bench/$(HLL_REF)
 
 hll-bench-full:
 	@(go test -C bench -run x -bench 'HLLAdd' -benchtime 1000000x -count 10 . && \
