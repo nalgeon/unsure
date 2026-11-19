@@ -1,5 +1,7 @@
 # UltraLogLog
 
+> 🚧 This data structure is a work in progress.
+
 UltraLogLog is a unique items counter that trades accuracy for space, like [HyperLogLog](../hll/README.md). It tells you approximately how many _distinct items_ it has seen, no matter how many times each one appeared. UltraLogLog (also called a _sketch_ from here on) doesn't store the items, so it's much more compact than a regular set.
 
 UltraLogLog is a newer design (Otmar Ertl, 2024) that uses the space more efficiently: for the same error, it needs about 43% less memory than HyperLogLog. For example, a HyperLogLog sketch with 0.81% standard error takes 16 KB, while an UltraLogLog sketch with 0.86% error takes 8 KB. However, adding, counting, and merging are slower than with HyperLogLog.
@@ -60,7 +62,7 @@ To trade accuracy for memory, use `ull.NewPrecision(p)` with p from 8 to 18. Eac
 | 16  | 0.31% |  64 KB |     113 KB |
 | 18  | 0.15% | 256 KB |     452 KB |
 
-The sketch also keeps a fixed 1 KB histogram, so at p=10 and below, the total saving is small.
+The sketch also uses a fixed 1 KB histogram (compared to 256 B in hll), so memory usage is about the same at p=10. With smaller p, hll uses less memory.
 
 Sketches can only be merged if they have the same precision. The sketch is deterministic, so the same items always produce the same sketch. The sketch is not designed for adversarial input: anyone who knows the seed can create items that artificially increase the estimate.
 
@@ -70,7 +72,7 @@ Sketches can only be merged if they have the same precision. The sketch is deter
 
 A HyperLogLog register loses a lot of information: it only keeps track of the highest value, not whether any slightly lower values were seen. These lower values show up about as often as the highest one, so they can tell a lot about the count.
 
-**UltraLogLog** uses the registers more effciently. Each register is still one byte, but it stores the highest rank _u_ in the upper 6 bits, and whether _u−1_ and _u−2_ were seen in the lower 2 bits:
+**UltraLogLog** uses the registers more efficiently. Each register is still one byte, but it stores the highest rank _u_ in the upper 6 bits, and whether _u−1_ and _u−2_ were seen in the lower 2 bits:
 
 ```text
               u = 5        u-1 u-2
