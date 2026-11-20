@@ -3,6 +3,7 @@ CM_REF := testdata/countmin-reference.txt
 FUSE_REF := testdata/fuse-reference.txt
 HLL_REF := testdata/hll-reference.txt
 LH_REF := testdata/loghist-reference.txt
+MH_REF := testdata/minhash-reference.txt
 TD_REF := testdata/tdigest-reference.txt
 TK_REF := testdata/topk-reference.txt
 ULL_REF := testdata/ull-reference.txt
@@ -14,6 +15,7 @@ FUZZTIME ?= 2m
 .PHONY: fuse-test fuse-bench fuse-bench-ref fuse-bench-full fuse-size fuse-fuzz
 .PHONY: countmin-test countmin-bench countmin-bench-ref countmin-bench-full countmin-accuracy
 .PHONY: hll-test hll-bench hll-bench-ref hll-bench-full hll-accuracy
+.PHONY: minhash-test minhash-bench minhash-bench-ref minhash-bench-full minhash-accuracy
 .PHONY: loghist-test loghist-bench loghist-bench-ref loghist-bench-full loghist-accuracy loghist-fuzz
 .PHONY: tdigest-test tdigest-bench tdigest-bench-ref tdigest-bench-full tdigest-accuracy tdigest-fuzz
 .PHONY: topk-test topk-bench topk-bench-ref topk-bench-full topk-accuracy topk-fuzz
@@ -137,6 +139,29 @@ ull-bench-full:
 
 ull-accuracy:
 	@go test -C bench -v -run '^TestULL(Accuracy|Size)$$' . | grep -E 'rmse=|KB' | sed 's/^.*_test.go:[0-9]*: //'
+
+# MinHash.
+
+minhash-test:
+	@GOOS=linux GOARCH=386 go vet ./minhash
+	@go test ./minhash
+	@go test -C bench -run MinHash .
+
+minhash-bench:
+	@(go test -C bench -run x -bench 'MinHashAdd//impl=unsure' -benchtime 1000000x -count 3 . && \
+	  go test -C bench -run x -bench 'MinHash(Similarity|Merge)//impl=unsure' -benchtime 200ms -count 3 . && \
+	  go test -C bench -run x -bench 'MinHashSignature' -benchtime 200ms -count 3 .) | benchstat -col /impl bench/$(MH_REF) -
+
+minhash-bench-ref:
+	@(go test -C bench -run x -bench 'MinHashAdd//impl=dgryski' -benchtime 1000000x -count 6 . && \
+	  go test -C bench -run x -bench 'MinHash(Similarity|Merge)//impl=dgryski' -count 6 .) > bench/$(MH_REF)
+
+minhash-bench-full:
+	@(go test -C bench -run x -bench 'MinHashAdd' -benchtime 1000000x -count 10 . && \
+	  go test -C bench -run x -bench 'MinHash(Signature|Similarity|Merge)' -count 10 .) | benchstat -col /impl -
+
+minhash-accuracy:
+	@go test -C bench -v -run '^TestMinHash(Accuracy|Size)$$' . | grep -E 'rmse=|KB' | sed 's/^.*_test.go:[0-9]*: //'
 
 # Log-linear histogram.
 

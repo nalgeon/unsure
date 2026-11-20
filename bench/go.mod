@@ -9,6 +9,7 @@ require (
 	github.com/axiomhq/hyperloglog v0.3.0
 	github.com/bits-and-blooms/bloom/v3 v3.7.1
 	github.com/caio/go-tdigest/v4 v4.1.0
+	github.com/dgryski/go-minhash v0.0.0-20190315135803-ad340ca03076
 	github.com/dgryski/go-topk v0.0.0-20191119021947-593b4f2374c9
 	github.com/influxdata/tdigest v0.0.1
 	github.com/jcalabro/gloom v0.1.0
@@ -23,6 +24,7 @@ require (
 	github.com/d4l3k/messagediff v1.2.1 // indirect
 	github.com/dgryski/go-metro v0.0.0-20250106013310-edb8663e5e33 // indirect
 	github.com/dgryski/go-sip13 v0.0.0-20200911182023-62edffca9245 // indirect
+	github.com/dgryski/go-spooky v0.0.0-20170606183049-ed3d087f40e2 // indirect
 	github.com/kamstrup/intmap v0.5.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect

@@ -12,6 +12,8 @@ The `unsure` module implements probabilistic data structures in Go. It's **simpl
 
 [HyperLogLog](./hll/README.md) and [UltraLogLog](./ull/README.md) estimate the number of distinct items. UltraLogLog is more compact, but HyperLogLog is faster.
 
+[MinHash](./minhash/README.md) estimates how similar two sets are.
+
 [T-digest](./tdigest/README.md) and [Log-linear histogram](./loghist/README.md) estimate quantiles of a stream of numbers. The t-digest is more compact, but the histogram is more accurate.
 
 [Top-k sketch](./topk/README.md) finds the most frequent items in a stream.

@@ -1,0 +1,66 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/nalgeon/unsure/bench
+cpu: Apple M1
+BenchmarkMinHashAdd/k=64/impl=dgryski-8         	 1000000	        47.94 ns/op
+BenchmarkMinHashAdd/k=64/impl=dgryski-8         	 1000000	        32.07 ns/op
+BenchmarkMinHashAdd/k=64/impl=dgryski-8         	 1000000	        30.08 ns/op
+BenchmarkMinHashAdd/k=64/impl=dgryski-8         	 1000000	        31.60 ns/op
+BenchmarkMinHashAdd/k=64/impl=dgryski-8         	 1000000	        30.55 ns/op
+BenchmarkMinHashAdd/k=64/impl=dgryski-8         	 1000000	        29.68 ns/op
+BenchmarkMinHashAdd/k=256/impl=dgryski-8        	 1000000	       113.9 ns/op
+BenchmarkMinHashAdd/k=256/impl=dgryski-8        	 1000000	       113.7 ns/op
+BenchmarkMinHashAdd/k=256/impl=dgryski-8        	 1000000	       114.0 ns/op
+BenchmarkMinHashAdd/k=256/impl=dgryski-8        	 1000000	       113.7 ns/op
+BenchmarkMinHashAdd/k=256/impl=dgryski-8        	 1000000	       113.9 ns/op
+BenchmarkMinHashAdd/k=256/impl=dgryski-8        	 1000000	       113.6 ns/op
+BenchmarkMinHashAdd/k=1024/impl=dgryski-8       	 1000000	       354.8 ns/op
+BenchmarkMinHashAdd/k=1024/impl=dgryski-8       	 1000000	       355.9 ns/op
+BenchmarkMinHashAdd/k=1024/impl=dgryski-8       	 1000000	       356.5 ns/op
+BenchmarkMinHashAdd/k=1024/impl=dgryski-8       	 1000000	       355.7 ns/op
+BenchmarkMinHashAdd/k=1024/impl=dgryski-8       	 1000000	       354.9 ns/op
+BenchmarkMinHashAdd/k=1024/impl=dgryski-8       	 1000000	       355.1 ns/op
+PASS
+ok  	github.com/nalgeon/unsure/bench	3.551s
+goos: darwin
+goarch: arm64
+pkg: github.com/nalgeon/unsure/bench
+cpu: Apple M1
+BenchmarkMinHashSimilarity/k=64/impl=dgryski-8         	48047792	        24.51 ns/op
+BenchmarkMinHashSimilarity/k=64/impl=dgryski-8         	50171067	        24.01 ns/op
+BenchmarkMinHashSimilarity/k=64/impl=dgryski-8         	49645585	        23.98 ns/op
+BenchmarkMinHashSimilarity/k=64/impl=dgryski-8         	49580202	        24.02 ns/op
+BenchmarkMinHashSimilarity/k=64/impl=dgryski-8         	50296802	        24.13 ns/op
+BenchmarkMinHashSimilarity/k=64/impl=dgryski-8         	50263533	        24.39 ns/op
+BenchmarkMinHashSimilarity/k=256/impl=dgryski-8        	11713492	       102.2 ns/op
+BenchmarkMinHashSimilarity/k=256/impl=dgryski-8        	11762374	       102.0 ns/op
+BenchmarkMinHashSimilarity/k=256/impl=dgryski-8        	11857276	       101.7 ns/op
+BenchmarkMinHashSimilarity/k=256/impl=dgryski-8        	11687110	       102.2 ns/op
+BenchmarkMinHashSimilarity/k=256/impl=dgryski-8        	11802630	       102.0 ns/op
+BenchmarkMinHashSimilarity/k=256/impl=dgryski-8        	11839514	       102.9 ns/op
+BenchmarkMinHashSimilarity/k=1024/impl=dgryski-8       	 3205462	       374.8 ns/op
+BenchmarkMinHashSimilarity/k=1024/impl=dgryski-8       	 3225848	       371.2 ns/op
+BenchmarkMinHashSimilarity/k=1024/impl=dgryski-8       	 3236425	       371.0 ns/op
+BenchmarkMinHashSimilarity/k=1024/impl=dgryski-8       	 3247513	       371.9 ns/op
+BenchmarkMinHashSimilarity/k=1024/impl=dgryski-8       	 3226821	       372.7 ns/op
+BenchmarkMinHashSimilarity/k=1024/impl=dgryski-8       	 3216985	       373.0 ns/op
+BenchmarkMinHashMerge/k=64/impl=dgryski-8              	38206876	        31.72 ns/op
+BenchmarkMinHashMerge/k=64/impl=dgryski-8              	37706205	        31.81 ns/op
+BenchmarkMinHashMerge/k=64/impl=dgryski-8              	37978940	        31.86 ns/op
+BenchmarkMinHashMerge/k=64/impl=dgryski-8              	37700677	        31.81 ns/op
+BenchmarkMinHashMerge/k=64/impl=dgryski-8              	38059543	        31.84 ns/op
+BenchmarkMinHashMerge/k=64/impl=dgryski-8              	37525309	        32.19 ns/op
+BenchmarkMinHashMerge/k=256/impl=dgryski-8             	 9200410	       130.8 ns/op
+BenchmarkMinHashMerge/k=256/impl=dgryski-8             	 9258505	       130.4 ns/op
+BenchmarkMinHashMerge/k=256/impl=dgryski-8             	 9294735	       131.5 ns/op
+BenchmarkMinHashMerge/k=256/impl=dgryski-8             	 9140865	       130.5 ns/op
+BenchmarkMinHashMerge/k=256/impl=dgryski-8             	 9149432	       130.6 ns/op
+BenchmarkMinHashMerge/k=256/impl=dgryski-8             	 9255604	       130.9 ns/op
+BenchmarkMinHashMerge/k=1024/impl=dgryski-8            	 2411416	       497.4 ns/op
+BenchmarkMinHashMerge/k=1024/impl=dgryski-8            	 2415747	       537.9 ns/op
+BenchmarkMinHashMerge/k=1024/impl=dgryski-8            	 2137444	       537.0 ns/op
+BenchmarkMinHashMerge/k=1024/impl=dgryski-8            	 2398261	       499.1 ns/op
+BenchmarkMinHashMerge/k=1024/impl=dgryski-8            	 2384842	       501.4 ns/op
+BenchmarkMinHashMerge/k=1024/impl=dgryski-8            	 2389072	       501.3 ns/op
+PASS
+ok  	github.com/nalgeon/unsure/bench	43.705s
