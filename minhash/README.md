@@ -114,7 +114,7 @@ equal        ✓       ✓
 
 (parentheses show the bucket the value was copied from)
 
-This order depends only on the empty bucket's position, so two similar sets tend to fill empty spots with the same values. This makes the estimate work for sets of any size. However, copied values don't add any new information, so when many buckets are empty, the error is higher than with classic MinHash (see the benchmarks below).
+This order depends only on the empty bucket's position, so two similar sets tend to fill empty spots with the same values. This makes the estimate work for sets of any size, with about the same error as classic MinHash (see the benchmarks below).
 
 **This implementation** keeps the k bucket minimums in the `Sketch`. `Add` and `Merge` use the original buckets. Densification only happens in `Signature`, and it makes a copy of the buckets without modifying the sketch.
 
@@ -130,7 +130,7 @@ Each item is hashed once with 64-bit [wyhash](https://github.com/wangyi-fudan/wy
 
 The value is the item's position within the bucket's range, so the smallest value in a bucket belongs to the item with the smallest hash. This works for any k, not just powers of two.
 
-Densification takes about k/f tries per empty bucket, where f is the number of non-empty buckets. So it costs nothing for large sets, and gets slower as the set gets smaller.
+Densification fills empty buckets in a coordinated way, spreading the copies evenly across the non-empty buckets. This keeps the error close to classic MinHash, and makes densification fast even for small sets.
 
 ## Benchmarks
 
@@ -152,29 +152,29 @@ _minhash_ hashes each item once, so `Add` takes the same time for any k, 6–70�
 
 `Signature` copies the buckets and fills the empty ones, so its time depends on the set size n. ns/op:
 
-|    k | n = k/16 | n = k/4 | n = 100·k |
-| ---: | -------: | ------: | --------: |
-|   64 |    1,710 |     376 |        57 |
-|  256 |    6,010 |   1,580 |       197 |
-| 1024 |   28,700 |   6,800 |       713 |
+|    k |  n = 1 | n = k/16 | n = k/4 | n = 100·k |
+| ---: | -----: | -------: | ------: | --------: |
+|   64 |    650 |      675 |     355 |        56 |
+|  256 |  4,250 |    1,780 |   1,200 |       199 |
+| 1024 | 43,200 |    6,380 |   4,610 |       729 |
 
-For large sets, almost no buckets are empty, and `Signature` just copies k values. For smaller sets, each of the empty buckets takes about k/n tries, so the time grows as the set gets smaller.
+For large sets, almost no buckets are empty, and `Signature` just copies k values. For smaller sets, filling the empty buckets takes up to about k·ln k steps, so the time grows as the set gets smaller.
 
 Accuracy of the similarity estimate at k=256 and J=0.5, RMSE over 5,000 pairs of sets (±1%), by the number of distinct items in both sets:
 
 | Distinct items |    minhash |   dgryski |
 | -------------- | ---------: | --------: |
-| 16             |      3.65% | **3.15%** |
-| 64             |      3.54% | **3.11%** |
-| 256            |      3.08% |     3.07% |
+| 16             |      3.19% | **3.15%** |
+| 64             |      3.11% |     3.11% |
+| 256            |  **2.89%** |     3.07% |
 | 1,024          |  **2.84%** |     3.12% |
 | 4,096          |  **2.99%** |     3.09% |
 | 16,384         |      3.11% | **3.07%** |
 | Memory         | **1.0 KB** |    2.0 KB |
 
-For large sets, both match the classic MinHash error (√(J(1−J)/k) = 3.12%). For sets smaller than k (16 and 64), _minhash_ fills the empty buckets with copies, so its error is up to 1.2× higher. For sets of a few k items (1,024), it's a bit lower, because each bucket samples a different item, while classic MinHash's hash functions can pick the same one. _dgryski_ stores 64-bit values, so it takes twice the memory.
+For large sets, both _minhash_ and _dgryski_ roughly match the classic MinHash error (√(J(1−J)/k) = 3.12%). For sets of a few hundred to a few thousand items (256 to 1,024), _minhash_'s error is a bit lower, because each bucket samples a different item, while classic MinHash's hash functions can pick the same one. _dgryski_ stores 64-bit values, so it uses twice as much memory.
 
-Overall, _minhash_ adds items 6–70× faster than _dgryski_, compares signatures at the same speed, merges 1.1–1.3× faster, and uses half the memory. It's as accurate or slightly more accurate for sets larger than k, and up to 1.2× less accurate for smaller ones.
+Overall, _minhash_ adds items 6–70× faster than _dgryski_, compares signatures at the same speed, merges 1.1–1.3× faster, has the same accuracy, and uses half the memory.
 
 To reproduce, run `make minhash-bench-full` and `make minhash-accuracy` from the repository root.
 

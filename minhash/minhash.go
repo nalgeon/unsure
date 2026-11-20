@@ -24,9 +24,8 @@
 //
 // When the set is not much larger than k, some buckets stay empty.
 // The signature fills each empty bucket by copying the value of another,
-// non-empty bucket ("optimal densification", Shrivastava, 2017).
-// But since copied values don't add any new information, the error
-// is higher for small sets.
+// non-empty bucket ("optimal densification", Shrivastava, 2017),
+// which keeps the error close to classic MinHash for sets of any size.
 //
 // Sketches with the same k can be merged: the result is the same as a single
 // sketch that saw the items of both.
@@ -44,8 +43,8 @@ import (
 	"github.com/nalgeon/unsure/internal/wyhash"
 )
 
-// maxK is the largest supported number of buckets. Densifying a sketch with
-// a single item takes about k² steps, so much larger k gets impractical.
+// maxK is the largest supported number of buckets.
+// Signature stores bucket indexes as uint16.
 const maxK = 1 << 16
 
 // empty marks a bucket that has no items. Hash values are capped below it.
@@ -123,23 +122,89 @@ func (s *Sketch) Signature() Signature {
 		// sets, with no values in common with non-empty ones.
 		return sig
 	}
-	// Optimal densification: each empty bucket i takes the value of the first
-	// non-empty bucket in its own pseudo-random sequence of buckets. With f
-	// filled buckets, it takes about k/f tries per empty bucket.
-	k := uint64(len(s.vals))
+	s.densify(sig, filled)
+	return sig
+}
+
+// densify fills the empty buckets of sig, a copy of the sketch's buckets
+// with the given number of filled ones (at least one).
+func (s *Sketch) densify(sig Signature, filled int) {
+	// Optimal densification (Shrivastava, 2017): each empty bucket takes
+	// the value of the first non-empty bucket in its own pseudo-random
+	// sequence of buckets. Bucket i's sequence is i + b_0, i + b_1, ...
+	// (mod k), with b_t a pseudo-random offset per round.
+	//
+	// Within a round, the empty buckets read from distinct buckets, and
+	// the mapping can be inverted: either each remaining empty bucket i
+	// reads from i + b_t (pull), or each filled bucket j writes to j − b_t
+	// if that one is still unset (push).
+	//
+	// Both give the same result, so each round uses the shorter list.
+	// With f filled buckets, a round resolves about f/k of the remaining
+	// empty ones, and the total work is about k·ln k.
+	k := len(s.vals)
+	// Bucket indexes fit in uint16 because k ≤ maxK.
+	buf := make([]uint16, k)
+	full, empties := buf[:0:filled], buf[filled:filled]
 	for i, v := range s.vals {
 		if v != empty {
-			continue
-		}
-		for try := uint64(0); ; try++ {
-			j, _ := bits.Mul64(mix(uint64(i)<<32|try), k)
-			if s.vals[j] != empty {
-				sig[i] = s.vals[j]
-				break
-			}
+			full = append(full, uint16(i))
+		} else {
+			empties = append(empties, uint16(i))
 		}
 	}
-	return sig
+	remaining := len(empties)
+	// The offsets come from wyrand, which costs one multiplication per round.
+	// This matters because sparse sketches take thousands of short rounds.
+	// Offsets must look independent: evenly spread ones (a Weyl sequence)
+	// make neighboring buckets copy the same sources and double the error.
+	x := uint64(0)
+	for len(full) < remaining {
+		x += wyrandStep
+		bt, _ := bits.Mul64(wyrand(x), uint64(k))
+		b := int(bt)
+		for _, j := range full {
+			i := int(j) - b
+			if i < 0 {
+				i += k
+			}
+			// Only unset empty buckets hold the empty marker in sig.
+			// Branchless: which buckets get set is unpredictable.
+			unset := sig[i] == empty
+			v := sig[i]
+			if unset {
+				v = s.vals[j]
+			}
+			sig[i] = v
+			remaining -= b2i(unset)
+		}
+	}
+	// Pulling is cheaper from now on, since remaining only shrinks.
+	// Drop the buckets set while pushing.
+	n := 0
+	for _, i := range empties {
+		empties[n] = i
+		n += b2i(sig[i] == empty)
+	}
+	empties = empties[:n]
+	for len(empties) > 0 {
+		x += wyrandStep
+		bt, _ := bits.Mul64(wyrand(x), uint64(k))
+		b := int(bt)
+		n := 0
+		for _, i := range empties {
+			j := int(i) + b
+			if j >= k {
+				j -= k
+			}
+			// Copy even if bucket j is empty: then sig[i] stays empty.
+			v := s.vals[j]
+			sig[i] = v
+			empties[n] = i
+			n += b2i(v == empty)
+		}
+		empties = empties[:n]
+	}
 }
 
 // Size returns the memory used by the sketch's data, in bytes.
@@ -174,10 +239,19 @@ func (a Signature) Similarity(b Signature) float64 {
 	return float64(n) / float64(len(a))
 }
 
-// mix is the splitmix64 finalizer, a bijective 64-bit mixer.
-func mix(x uint64) uint64 {
-	x += 0x9e3779b97f4a7c15
-	x = (x ^ x>>30) * 0xbf58476d1ce4e5b9
-	x = (x ^ x>>27) * 0x94d049bb133111eb
-	return x ^ x>>31
+// b2i returns 1 if b is true and 0 otherwise.
+func b2i(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+// wyrandStep is the state increment of wyrand.
+const wyrandStep = 0xa0761d6478bd642f
+
+// wyrand returns a pseudo-random number for the wyrand state x.
+func wyrand(x uint64) uint64 {
+	hi, lo := bits.Mul64(x, x^0xe7037ed1a0b428db)
+	return hi ^ lo
 }
