@@ -19,7 +19,7 @@ FUZZTIME ?= 2m
 .PHONY: loghist-test loghist-bench loghist-bench-ref loghist-bench-full loghist-accuracy loghist-fuzz
 .PHONY: tdigest-test tdigest-bench tdigest-bench-ref tdigest-bench-full tdigest-accuracy tdigest-fuzz
 .PHONY: topk-test topk-bench topk-bench-ref topk-bench-full topk-accuracy topk-fuzz
-.PHONY: ull-test ull-bench ull-bench-ref ull-bench-full ull-accuracy
+.PHONY: ull-test ull-bench ull-bench-ref ull-bench-full ull-accuracy ull-fuzz
 
 # Typical tasks for each data structure:
 # - "test" - functional and accuracy tests.
@@ -139,6 +139,9 @@ ull-bench-full:
 
 ull-accuracy:
 	@go test -C bench -v -run '^TestULL(Accuracy|Size)$$' . | grep -E 'rmse=|KB' | sed 's/^.*_test.go:[0-9]*: //'
+
+ull-fuzz:
+	@go test ./ull -run '^$$' -fuzz '^FuzzSketch$$' -fuzztime $(FUZZTIME)
 
 # MinHash.
 
