@@ -15,7 +15,7 @@ FUZZTIME ?= 2m
 .PHONY: fuse-test fuse-bench fuse-bench-ref fuse-bench-full fuse-size fuse-fuzz
 .PHONY: countmin-test countmin-bench countmin-bench-ref countmin-bench-full countmin-accuracy
 .PHONY: hll-test hll-bench hll-bench-ref hll-bench-full hll-accuracy
-.PHONY: minhash-test minhash-bench minhash-bench-ref minhash-bench-full minhash-accuracy
+.PHONY: minhash-test minhash-bench minhash-bench-ref minhash-bench-full minhash-accuracy minhash-fuzz
 .PHONY: loghist-test loghist-bench loghist-bench-ref loghist-bench-full loghist-accuracy loghist-fuzz
 .PHONY: tdigest-test tdigest-bench tdigest-bench-ref tdigest-bench-full tdigest-accuracy tdigest-fuzz
 .PHONY: topk-test topk-bench topk-bench-ref topk-bench-full topk-accuracy topk-fuzz
@@ -165,6 +165,9 @@ minhash-bench-full:
 
 minhash-accuracy:
 	@go test -C bench -v -run '^TestMinHash(Accuracy|Size)$$' . | grep -E 'rmse=|KB' | sed 's/^.*_test.go:[0-9]*: //'
+
+minhash-fuzz:
+	@go test ./minhash -run '^$$' -fuzz '^FuzzSketch$$' -fuzztime $(FUZZTIME)
 
 # Log-linear histogram.
 
