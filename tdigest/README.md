@@ -1,6 +1,6 @@
 # T-digest
 
-A t-digest is a summary of a stream of numbers that trades accuracy for space. It can give you an approximate median, 99th percentile, or any other _quantile_ of the data. It can also estimate what fraction of the numbers are below a certain value (the CDF). The digest doesn't actually store the numbers, so it's much more compact than a sorted list.
+A t-digest is a summary of a stream of numbers that trades accuracy for space. It can give you an approximate median, 99th percentile, or any other _quantile_ of the data. It can also estimate what fraction of the numbers are below a certain value (the CDF). The digest doesn't store the numbers, so it's much more compact than a sorted list.
 
 For example, to find the exact 99th percentile of 1,000,000 numbers, you'd have to keep all of them. With 64-bit floats, that takes 8 MB. A t-digest estimates the same percentile within about 0.03% of the rank (between the 98.97th and the 99.03rd percentile) using only 8 KB — 1,000 times smaller. The size of the digest doesn't depend on the number of values, only on the accuracy you choose. An 8 KB digest summarizes a billion values as well as a million.
 

@@ -1,6 +1,6 @@
 # Count-min sketch
 
-A count-min sketch is a frequency table that trades accuracy for space. It tells you approximately how many times each item has appeared. The estimate is _never less_ than the actual count, but it can be _higher_. The sketch doesn't actually store the items, so it's much more compact than a regular map of per-item counts.
+A count-min sketch is a frequency table that trades accuracy for space. It tells you approximately how many times each item has appeared. The estimate is _never less_ than the actual count, but it can be _higher_. The sketch doesn't store the items, so it's much more compact than a regular map of per-item counts.
 
 For example, a regular map counting 1,000,000 distinct 8-byte strings takes about 64 MB. A count-min sketch for the same strings, with estimates within 0.01% of the total count (with 99% probability), uses only 0.55 MB — that's 116 times smaller. The size of the sketch doesn't depend on the number of distinct items or their size, only on the accuracy you choose. So the difference gets even bigger with more or longer strings.
 

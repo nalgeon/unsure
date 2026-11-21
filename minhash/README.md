@@ -4,9 +4,9 @@ MinHash estimates how similar two sets are. It summarizes each set in a short fi
 
 The size of a signature doesn't depend on the size of the set, so you can compare a set with a million items to another set just by looking at 256 numbers instead of every item. Plus, each set's signature is only calculated once, so comparing lots of sets to each other is relatively cheap.
 
-MinHash is useful for finding near-duplicates, like web pages, documents, or code that are only slightly different (as sets of words or 3-word phrases). It's also useful for finding similar user profiles (as sets of liked items) or overlapping datasets (as sets of keys). With locality-sensitive hashing (LSH), you can group the signature values into keys that put similar sets into the same buckets, so you only need to compare likely matches.
+MinHash is useful for finding near-duplicate web pages, documents, or code (represented as sets of words or 3-word phrases). It's also useful for finding similar user profiles (as sets of liked items) or overlapping datasets (as sets of keys). With locality-sensitive hashing (LSH), you can index signatures so that similar sets are likely to land in the same bucket, and only compare sets within a bucket.
 
-You can add items to a sketch, merge sketches, and get the signature. You can also compare signatures. You cannot check if a specific item was added, count the items, remove them, or list them.
+You can add items to a MinHash sketch, merge sketches, and get the signature. You can also compare signatures. You cannot check if a specific item was added, count the items, remove them, or list them.
 
 ## Usage
 
@@ -18,17 +18,20 @@ go get github.com/nalgeon/unsure
 import "github.com/nalgeon/unsure/minhash"
 
 // Two documents as sets of words.
-a := minhash.New(256)
-for _, w := range strings.Fields("the quick brown fox jumps over the lazy dog") {
-    a.Add([]byte(w))
-}
-b := minhash.New(256)
-for _, w := range strings.Fields("the quick brown cat jumps over the lazy dog") {
-    b.Add([]byte(w))
+strA := "the quick brown fox jumps over the lazy dog"
+docA := minhash.New(256)
+for w := range strings.FieldsSeq(strA) {
+    docA.Add([]byte(w))
 }
 
-sigA, sigB := a.Signature(), b.Signature()
-sigA.Similarity(sigB) // 0.75 (true value 0.78: 7 of 9 distinct words are shared)
+strB := "the quick brown cat jumps over the lazy dog"
+docB := minhash.New(256)
+for w := range strings.FieldsSeq(strB) {
+    docB.Add([]byte(w))
+}
+
+sigA, sigB := docA.Signature(), docB.Signature()
+sigA.Similarity(sigB) // 0.75 (true value 7/9 = 0.78)
 ```
 
 The signature is a `[]uint32`, so you can store it, send it, or use its values directly (for example, as LSH band keys).
@@ -59,7 +62,7 @@ Sketches and signatures can only be merged or compared if they have the same k. 
 
 ## How it works
 
-**Classic MinHash** hashes every item with k different hash functions. Here are two sets, A = {fox, cat, dog, owl} and B = {fox, dog, emu}, and their item hashes for k=4:
+**Classic MinHash** hashes every item with _k_ different hash functions. Here are two sets, A = {fox, cat, dog, owl} and B = {fox, dog, emu}, and their item hashes for k=4:
 
 ```text
 item   h1     h2     h3     h4     in A   in B
@@ -95,26 +98,26 @@ A minimums   0.07         0.48         ·            0.90
 B minimums   0.07         0.48         0.63         ·
 ```
 
-Each bucket works like a separate MinHash over the items in its range. So the bucket minimums form a signature, and comparing two signatures works the same way.
+Each bucket works like a separate MinHash over the items in its range. So the bucket minimums form a signature, and comparing two signatures works the same way. But there is a catch: when a set isn't much larger than k, some buckets end up empty (shown as · above), so there's nothing to compare in them.
 
-There is a catch: when a set isn't much larger than k, some buckets end up empty (· above), so there's nothing to compare in them. **Optimal densification** solves this by filling each empty bucket with the value from another bucket in the same set. Each empty bucket tries other buckets in a pseudo-random order and copies the value of the first non-empty one:
+**Optimal densification** solves this by filling each empty bucket with the value from another bucket in the same set. Each empty bucket tries other buckets in a pseudo-random order and copies the value of the first non-empty one:
 
 ```text
-bucket       0       1       2         3
-A minimums   0.07    0.48    ·         0.90
-B minimums   0.07    0.48    0.63      ·
+bucket       0         1         2         3
+A minimums   0.07      0.48      ·         0.90
+B minimums   0.07      0.48      0.63      ·
 
-A signature  0.07    0.48    0.90 (3)  0.90
-B signature  0.07    0.48    0.63      0.07 (0)
-equal        ✓       ✓
+A signature  0.07      0.48      0.90 (3)  0.90
+B signature  0.07      0.48      0.63      0.07 (0)
+equal        ✓         ✓
              → 2 of 4 = 0.5
 ```
 
-(parentheses show the bucket the value was copied from)
+(parentheses show which bucket the value was copied from)
 
-This order depends only on the empty bucket's position, so two similar sets tend to fill empty spots with the same values. This makes the estimate work for sets of any size, with about the same error as classic MinHash (see the benchmarks below).
+This order depends only on the empty bucket's position, so two similar sets tend to fill empty spots with the same values. This makes the estimate work for sets of any size, with about the same error as classic MinHash.
 
-**This implementation** keeps the k bucket minimums in the `Sketch`. `Add` and `Merge` use the original buckets. Densification only happens in `Signature`, and it makes a copy of the buckets without modifying the sketch.
+**This implementation** keeps the k bucket minimums in the sketch. `Add` and `Merge` use the original buckets. Densification only happens in `Signature`, and it makes a copy of the buckets without modifying the sketch.
 
 Each item is hashed once with 64-bit [wyhash](https://github.com/wangyi-fudan/wyhash). Multiplying the hash by k once gives both the bucket and the value to store:
 
@@ -158,7 +161,7 @@ _minhash_ hashes each item once, so `Add` takes the same time for any k, 6–70�
 
 For large sets, almost no buckets are empty, and `Signature` just copies k values. For smaller sets, filling the empty buckets takes up to about k·ln k steps, so the time grows as the set gets smaller.
 
-Accuracy of the similarity estimate at k=256 and J=0.5, RMSE over 5,000 pairs of sets (±1%), by the number of distinct items in both sets:
+Accuracy of the similarity estimate at k=256 and J=0.5, RMSE over 5,000 pairs of sets (±1%), by the number of distinct items in both sets (lower is better):
 
 | Distinct items |    minhash |   dgryski |
 | -------------- | ---------: | --------: |

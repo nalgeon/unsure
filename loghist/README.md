@@ -1,6 +1,6 @@
 # Log-linear histogram
 
-A log-linear histogram is a summary of a stream of numbers that trades accuracy for space. It can give you an approximate median, 99th percentile, or any other _quantile_ of the data. It can also estimate what fraction of the numbers are below a certain value (the CDF). The histogram doesn't actually store the numbers, so it's much more compact than a sorted list.
+A log-linear histogram is a summary of a stream of numbers that trades accuracy for space. It can give you an approximate median, 99th percentile, or any other _quantile_ of the data. It can also estimate what fraction of the numbers are below a certain value (the CDF). The histogram doesn't store the numbers, so it's much more compact than a sorted list.
 
 For example, to find the exact 99.9th percentile of 1,000,000 response times, you'd have to keep all of them. With 64-bit floats, that takes 8 MB. A log-linear histogram estimates the same percentile within 0.39% of its true value using about 14 KB — almost 600 times less.
 
@@ -68,7 +68,15 @@ NaN and infinite values are ignored. The order in which values are added doesn't
 
 A **histogram** splits the range of values into _buckets_ and counts how many values are in each one. To estimate a quantile, it adds up the counts starting from the lowest bucket until it reaches the requested rank, then returns a value from that bucket. The accuracy of the estimate depends on how wide the bucket is.
 
-With buckets that have equal widths, like 0–10, 10–20, and so on, the error is very large for small values (5 ± 5) and unnecessarily small for large values (995 ± 5). A **logarithmic histogram** solves this by making each bucket's width proportional to its value. For example, if the bucket boundaries are powers of 1.02 (1, 1.02, 1.0404, ...), the end of each bucket is 2% larger than its start, so any value in the bucket is within about 1% of the bucket's midpoint. _DDSketch_ uses this method. The downside is that finding the right bucket for a value means you have to calculate a logarithm, which is relatively slow.
+With buckets that have equal widths, like 0–10, 10–20, and so on, every estimate has the same absolute error of ±5 around the bucket's midpoint. So the relative error is very large for small values and unnecessarily small for large values:
+
+```text
+0       10      20      30     970     980     990     1000
+├───────┼───────┼───────┼─ ··· ─┼───────┼───────┼───────┤
+    └ 5 ± 5: ±100%                   995 ± 5: ±0.5% ┘
+```
+
+A **logarithmic histogram** solves this by making each bucket's width proportional to its value. For example, if the bucket boundaries are powers of 1.02 (1, 1.02, 1.0404, ...), the end of each bucket is 2% larger than its start, so any value in the bucket is within about 1% of the bucket's midpoint. _DDSketch_ uses this method. The downside is that finding the right bucket for a value means you have to calculate a logarithm, which is relatively slow.
 
 A **log-linear histogram** gets almost the same result with cheaper math. First, it splits the values into ranges between powers of two: 1–2, 2–4, 4–8, and so on (these are called _octaves_). Then it splits every octave into the same number of equal-width buckets. For example, here are three octaves with 4 buckets each:
 
@@ -152,12 +160,12 @@ Speed on Apple M1, ns/op (lower is better):
 
 `Add` is measured on a histogram that already has 1M values. `Merge` merges histograms of 100K values each, one after another, into a histogram that starts with 1M values.
 
-Mean relative error at the requested 0.1%, over 5 histograms of 1M values each, lower is better:
+Mean relative error at the requested 0.1%, over 5 histograms of 1M values each (lower is better):
 
 | Quantile |     unsure |        hdr |     dd |
 | -------- | ---------: | ---------: | -----: |
 | 0.5      | **0.033%** | **0.033%** | 0.050% |
-| 0.99     |     0.038% | **0.037%** | 0.048% |
+| 0.99     | **0.038%** | **0.037%** | 0.048% |
 | 0.999    |     0.027% | **0.019%** | 0.039% |
 | 0.9999   |     0.016% | **0.002%** | 0.025% |
 
@@ -169,7 +177,7 @@ Memory after adding 1M values (lower is better):
 |  0.4% |  14 KB | 264 KB | **13 KB** |
 |  0.1% |  56 KB | 264 KB | **40 KB** |
 
-Overall, _unsure_ adds values as fast as _hdr_ and 5× faster than _dd_, queries 5–19× faster than _hdr_ and about 35× faster than _dd_, and merges about as fast as _dd_ and 35–175× faster than _hdr_. It's about as accurate as _hdr_ with 5× less memory, and 1.3–1.6× more accurate than _dd_ with 40% more memory.
+Overall, _unsure_ adds values as fast as _hdr_ and 5× faster than _dd_, queries 5–19× faster than _hdr_ and about 35× faster than _dd_, and merges about as fast as _dd_ and 35–175× faster than _hdr_. It's slightly less accurate than _hdr_ (using 5× less memory), and more accurate than _dd_ (using 1.4× more memory).
 
 To reproduce, run `make loghist-bench-full` and `make loghist-accuracy` from the repository root.
 
