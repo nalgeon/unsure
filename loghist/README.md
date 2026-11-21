@@ -1,7 +1,5 @@
 # Log-linear histogram
 
-> 🚧 This data structure is a work in progress.
-
 A log-linear histogram is a summary of a stream of numbers that trades accuracy for space. It can give you an approximate median, 99th percentile, or any other _quantile_ of the data. It can also estimate what fraction of the numbers are below a certain value (the CDF). The histogram doesn't actually store the numbers, so it's much more compact than a sorted list.
 
 For example, to find the exact 99.9th percentile of 1,000,000 response times, you'd have to keep all of them. With 64-bit floats, that takes 8 MB. A log-linear histogram estimates the same percentile within 0.39% of its true value using about 14 KB — almost 600 times less.

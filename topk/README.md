@@ -1,9 +1,5 @@
 # Top-k sketch
 
-A simple and fast Top-k sketch (HeavyKeeper) implemented in Go.
-
-## What is a Top-k sketch
-
 A Top-k sketch finds the _k most frequent_ items in a stream (the "heavy hitters"), along with their approximate counts. It uses a fixed amount of memory based only on k, no matter how many different items are in the stream.
 
 To find the exact top items, you'd have to count every unique item, for example with a map of per-item counts. With millions of distinct items, that takes tens or hundreds of megabytes. A Top-k sketch for the top 1000 items takes about 360 KB, and it usually finds all of them.

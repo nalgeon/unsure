@@ -1,7 +1,5 @@
 # MinHash
 
-> 🚧 This data structure is a work in progress.
-
 MinHash estimates how similar two sets are. It summarizes each set in a short fixed-size _signature_ (for example, 256 numbers). Comparing two signatures gives the approximate _Jaccard similarity_ of the sets: |A∩B| / |A∪B|, the proportion of unique items that both sets share. Identical sets have similarity 1, sets with no common items have 0.
 
 The size of a signature doesn't depend on the size of the set, so you can compare a set with a million items to another set just by looking at 256 numbers instead of every item. Plus, each set's signature is only calculated once, so comparing lots of sets to each other is relatively cheap.

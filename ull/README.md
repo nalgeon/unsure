@@ -1,7 +1,5 @@
 # UltraLogLog
 
-> 🚧 This data structure is a work in progress.
-
 UltraLogLog is a unique items counter that trades accuracy for space, like [HyperLogLog](../hll/README.md). It tells you approximately how many _distinct items_ it has seen, no matter how many times each one appeared. UltraLogLog (also called a _sketch_ from here on) doesn't store the items, so it's much more compact than a regular set.
 
 UltraLogLog is a newer design (Otmar Ertl, 2024) that uses the space more efficiently: for the same error, it needs about 43% less memory than HyperLogLog. For example, a HyperLogLog sketch with 0.81% standard error takes 16 KB, while an UltraLogLog sketch with 0.86% error takes 8 KB. However, adding, counting, and merging are slower than with HyperLogLog.

@@ -1,7 +1,5 @@
 # Binary fuse filter
 
-> 🚧 This data structure is a work in progress.
-
 A binary fuse filter is a set that trades certainty for space, just like a [Bloom filter](../bloom/README.md). It can tell you that an item is _definitely not_ in the set, or that it _probably is_ (which might be a false positive). The filter doesn't store the items, so it's much more compact than a regular set.
 
 Unlike a Bloom filter, a binary fuse filter is _static_: you build it once from all the items, and you can't add more later. In exchange, it uses 24–36% less memory than a Bloom filter with the same false positive rate. For example, a filter for 1,000,000 items with a 0.39% false positive rate takes 1.13 MB (9 bits per item), while a Bloom filter takes 1.51 MB (12 bits per item).
