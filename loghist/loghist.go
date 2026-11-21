@@ -7,7 +7,7 @@
 // of the true value, from the median up to the maximum.
 //
 // The error is measured in values: with the default 0.39%, if the true
-// 99.9th percentile is 200 ms, Quantile(0.999) returns a value between
+// 99th percentile is 200 ms, Quantile(0.99) returns a value between
 // 199.2 and 200.8 ms. The relative error is set with [NewError]:
 //
 //	requested   max error   memory (values from 1 to 1e6)

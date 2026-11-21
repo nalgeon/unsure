@@ -66,7 +66,7 @@ Sketches can only be merged if they have the same precision. The sketch is deter
 
 ## How it works
 
-**HyperLogLog** hashes each item, uses the first _p_ bits of the hash to pick one of m = 2^p _registers_, and keeps in the register the highest _rank_ (the number of leading zeros in the rest of the hash, plus one) it has seen. Seeing a rank of _k_ suggests there were about 2^k items in the register. The count is estimated from all the registers together.
+**HyperLogLog** hashes each item and uses the first _p_ bits of the hash to pick one of m = 2^p _registers_. It calculates the _rank_ (the number of leading zeros in the rest of the hash, plus one) and keeps the highest rank it has seen in the register. Seeing a rank of _k_ suggests there were about 2^k items in the register. The count is estimated from all the registers together.
 
 ```text
                       p bits
@@ -79,7 +79,7 @@ registers │ 3 │ 0 │ 5 │ 2 │ 1 │ 0 │ 4 │ 2 │ 0 │ 1 │  2 →
           └───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
 ```
 
-A HyperLogLog register loses a lot of information: it only keeps track of the highest value, not whether any slightly lower values were seen. These lower values show up about as often as the highest one, so they can tell a lot about the count.
+A HyperLogLog register loses some information: it only keeps track of the highest value, not whether any slightly lower values were seen. These lower values show up at least as often as the highest one, so they can tell a lot about the count.
 
 **UltraLogLog** uses the registers more efficiently. Each register is still one byte, but it stores the highest rank _k_ in the upper 6 bits, and whether _k−1_ and _k−2_ were seen in the lower 2 bits:
 

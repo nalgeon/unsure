@@ -2,9 +2,9 @@
 
 A log-linear histogram is a summary of a stream of numbers that trades accuracy for space. It can give you an approximate median, 99th percentile, or any other _quantile_ of the data. It can also estimate what fraction of the numbers are below a certain value (the CDF). The histogram doesn't store the numbers, so it's much more compact than a sorted list.
 
-For example, to find the exact 99.9th percentile of 1,000,000 response times, you'd have to keep all of them. With 64-bit floats, that takes 8 MB. A log-linear histogram estimates the same percentile within 0.39% of its true value using about 14 KB — almost 600 times less.
+For example, to find the exact 99th percentile of 1,000,000 response times, you'd have to keep all of them. With 64-bit floats, that takes 8 MB. A log-linear histogram estimates the same percentile within 0.39% of its true value using about 14 KB — almost 600 times less.
 
-The error is relative to the value: if the true 99.9th percentile is 200 ms, the histogram returns a value between 199.2 and 200.8 ms. This guarantee applies to every quantile, from the median to the most extreme outliers. The size of the histogram doesn't depend on the number of values, only on the accuracy you choose and on how wide the range of the values is.
+The error is relative to the value: if the true 99th percentile is 200 ms, the histogram returns a value between 199.2 and 200.8 ms. This guarantee applies to every quantile, from the median to the most extreme outliers. The size of the histogram doesn't depend on the number of values, only on the accuracy you choose and on how wide the range of the values is.
 
 A log-linear histogram is useful when you need percentiles for positive values that cover a wide range, like latencies, file sizes, or prices. You can merge histograms to gather data from multiple machines or segments (like by hour, endpoint, or region). Merging is exact: a merged histogram is the same as if it had received all the values directly.
 
@@ -27,9 +27,9 @@ hist.Add(8.1)
 hist.Add(130.0)
 // ...
 
-hist.Quantile(0.5)   // median
-hist.Quantile(0.999) // 99.9th percentile
-hist.CDF(100)        // fraction of responses faster than 100 ms
+hist.Quantile(0.5)  // median
+hist.Quantile(0.99) // 99th percentile
+hist.CDF(100)       // fraction of responses faster than 100 ms
 ```
 
 Merging histograms:
@@ -90,7 +90,7 @@ Each octave is twice as long as the previous one, so its buckets are twice as wi
 
 _HdrHistogram_ is the best-known log-linear histogram. It records integers: the position of the highest 1 bit of a number determines its octave, and the next few bits determine the bucket within the octave. The lowest and highest values are set when the histogram is created, and it allocates the buckets for this whole range upfront. The precision is set in significant decimal digits, and the histogram returns the highest value of a bucket as the estimate.
 
-**This implementation** works with float64 numbers and finds the bucket in a similar way to _HdrHistogram_. A float64 is stored as three parts: a sign bit, an 11-bit exponent _e_, and a 52-bit mantissa _f_. The number's value is 1.f × 2^e, where 1.f is a binary fraction between 1 and 2. The exponent determines the octave, from 2^e to 2^(e+1). The _m_ bits of the mantissa determine one of the 2^m equal buckets within the octave.
+**This implementation** works with float64 numbers and finds the bucket in a similar way to _HdrHistogram_. A float64 is stored as three parts: a sign bit, an 11-bit exponent _e_, and a 52-bit mantissa _f_. The number's value is 1.f × 2^e, where 1.f is a binary fraction between 1 and 2. The exponent determines the octave, from 2^e to 2^(e+1). The top _m_ bits of the mantissa determine one of the 2^m equal buckets within the octave.
 
 For example, here's the number 5.25 with m=3 (8 buckets per octave). In binary, 5.25 = 1.0101₂ × 2², so the exponent is 2 (stored as 2 + 1023 = 1025, because float64 adds 1023 to the exponent to avoid negative values), and the mantissa starts with 0101:
 

@@ -6,7 +6,7 @@ Unlike a Bloom filter, a binary fuse filter is static: you build it once from al
 
 This makes binary fuse filters a good fit for data that is written once and read many times, like the key set of an immutable file in a database (to skip files that don't have the key), or a list of known bad items, such as leaked passwords or malicious URLs.
 
-You can add an item to a filter and check if an item is in the filter, but you cannot delete an item, count the number of items, or iterate over them.
+You can check if an item is in the filter, but you cannot add or delete an item, count the number of items, or iterate over them.
 
 ## Usage
 
@@ -98,7 +98,7 @@ Memory, bits per item (lower is better):
 |   10M | 8-bit       |  **9.02** |  **9.02** | 12.10 |
 |   10M | 16-bit      | **18.04** | **18.04** | 27.99 |
 
-Overall, _unsure_ is the same size as _xorfilter_ (same layout), with 22–25% faster checks (8–13% for 50M items, where memory access dominates) and 4–6% faster builds. Compared to the Bloom filter, it uses 24–36% less memory (8% for 1K items), with checks as fast or faster, but 1.2–2.6× slower builds.
+Overall, _unsure_ is the same size as _xorfilter_ (same layout), with 22–25% faster checks (8–13% for 50M items, where memory access dominates) and 4–6% faster builds. Compared to the Bloom filter, it uses 24–36% less memory (8% for 1K items), with checks as fast or faster, but up to 2.5× slower builds.
 
 To reproduce, run `make fuse-bench-full` and `make fuse-size` from the repository root.
 
